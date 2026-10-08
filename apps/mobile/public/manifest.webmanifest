@@ -1,0 +1,11 @@
+{
+  "name": "Công việc · Khoa Công nghệ Thông tin",
+  "short_name": "Công việc Khoa",
+  "start_url": "/m/",
+  "scope": "/m/",
+  "display": "standalone",
+  "background_color": "#f7f8fc",
+  "theme_color": "#3563ee",
+  "lang": "vi",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

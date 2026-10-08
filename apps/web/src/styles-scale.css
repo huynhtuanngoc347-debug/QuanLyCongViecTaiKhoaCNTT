@@ -1,0 +1,157 @@
+/* Tăng cỡ chữ cho các quy tắc trong public/styles.css (file đó đang để chỉ đọc).
+   Sinh tự động: <12px +1.5px; 12–14px ×1.12 (tối thiểu 14px); 14–20px ×1.08; ≥20px ×1.04. */
+body{font-size:16px}
+h1{font-size:29px}
+h2{font-size:23px}
+h3{font-size:18.5px}
+small{font-size:14.5px}
+.brand-name{font-size:18.5px}
+.brand small{font-size:14.5px}
+.nav-label{font-size:14.5px}
+.nav-link{font-size:16px}
+.avatar{font-size:15.5px}
+.topbar{font-size:15.5px}
+.mobile-menu{font-size:19.5px}
+.page-header p{font-size:16px}
+.eyebrow{font-size:14.5px}
+.count{font-size:14.5px}
+.button{font-size:16px}
+.button.small{font-size:15.5px}
+.link-button{font-size:16px}
+.badge{font-size:14.5px}
+.explorer h2{font-size:18.5px}
+.search-input{font-size:16px}
+.unit-entry strong{font-size:16px}
+.unit-entry small{font-size:14.5px}
+.unit-identity h2{font-size:25px}
+.unit-identity p:last-child{font-size:16px}
+.metadata dt{font-size:14.5px}
+.metadata dd{font-size:17.5px}
+.unit-description{font-size:16px}
+.section-toolbar h2{font-size:21px}
+table{font-size:16px}
+th{font-size:14.5px}
+.person-link strong{font-size:16px}
+.person-link small{font-size:14.5px}
+.table-footer{font-size:14.5px}
+.empty p{font-size:15.5px}
+.form-card>h2{font-size:19.5px}
+.field>label{font-size:15.5px}
+.field input,.field select,.field textarea{font-size:16px}
+.field small{font-size:14.5px}
+.field .error-text{font-size:14.5px}
+.form-error,.storage-notice{font-size:16px}
+.new-parent legend{font-size:16px}
+.pending-note{font-size:15.5px}
+.position-list h2{font-size:18.5px}
+.position-button{font-size:16px}
+.permission-panel h2{font-size:23px}
+.permission-panel>p{font-size:16px}
+.permission-toggle span{font-size:15.5px}
+.profile-summary .avatar{font-size:23px}
+.profile-summary h2{font-size:25px}
+.profile-summary p{font-size:16px}
+.contact-detail{font-size:15.5px}
+.profile-card h3{font-size:21px}
+.portal-eyebrow{font-size:15.5px}
+.portal-header h1{font-size:31px}
+.portal-role{font-size:16px}
+.portal-badge{font-size:15.5px}
+.portal-date{font-size:16px}
+.portal-body h2{font-size:19.5px}
+.portal-body .actions .button.secondary{font-size:16px}
+.portal-body .actions .button.secondary::after{font-size:23px}
+.login-kicker{font-size:14.5px}
+.login-hero h2{font-size:29px}
+.login-features strong{font-size:16px}
+.login-features small{font-size:15px}
+.login-foot{font-size:14px}
+.login-panel h1{font-size:29px}
+.login-sub{font-size:16px}
+.login-panel .field input{font-size:17.5px}
+.password-toggle{font-size:15.5px}
+.login-row{font-size:15.5px}
+.login-row .check{font-size:15.5px}
+.login-submit{font-size:17.5px}
+.login-card h1{font-size:27px}
+.user-menu .account-avatar{font-size:14.5px}
+.user-text strong{font-size:15.5px}
+.user-text small{font-size:14.5px}
+.user-head strong{font-size:16px}
+.user-head small{font-size:14.5px}
+.menu-item{font-size:16px}
+.toast{font-size:16px}
+dialog h2{font-size:21px}
+dialog p{font-size:16px}
+.small{font-size:14.5px}
+.nav-badge{font-size:14px}
+.notice{font-size:15.5px}
+.chip{font-size:15.5px}
+.seg a,.seg label{font-size:15.5px}
+.task-filters select,.task-filters input[type=search],.task-filters input[type=date]{font-size:15.5px}
+.search-box input{font-size:16px}
+.st{font-size:14.5px}
+.prio{font-size:14.5px}
+.due{font-size:15.5px}
+.avatars .avatar{font-size:12.5px}
+.pill-alert{font-size:14px}
+.cal-head h2{font-size:21px}
+.cal-legend{font-size:14.5px}
+.cal-dow{font-size:14.5px}
+.cal-week{font-size:14.5px}
+.cal-num{font-size:15.5px}
+.cal-pill{font-size:14px}
+.back-link{font-size:16px}
+.detail-title h1{font-size:27px}
+.kv dt{font-size:14.5px}
+.kv dd{font-size:18.5px}
+.kv-link{font-size:14.5px}
+.tabs a{font-size:16px}
+.info-list dt{font-size:15.5px}
+.content-sec h3{font-size:15.5px}
+.file-chip{font-size:14.5px}
+.ext-box{font-size:15.5px}
+.review-box{font-size:15.5px}
+.comment.reply .avatar{font-size:14px}
+.tl-day h4{font-size:14.5px}
+.tl-row{font-size:16px}
+.dialog-head p{font-size:15.5px}
+.pick-item .avatar,.pick-who .avatar{font-size:14px}
+.pick-item small{font-size:14.5px}
+.dep-item strong{font-size:15.5px}
+.dep-item .st{font-size:14px}
+.dep-chip{font-size:14.5px}
+.dep-chip button{font-size:17.5px}
+.pick-table select,.pick-table input[type=date]{font-size:15.5px}
+.slider-row output{font-size:23px}
+.due-compare>span{font-size:21px}
+.check{font-size:16px}
+.task-form-card h2{font-size:18.5px}
+.bell-badge{font-size:12.5px}
+.bell-all{font-size:15.5px}
+.noti-text{font-size:15.5px}
+.noti-text small{font-size:14.5px}
+.alert-row b{font-size:15.5px}
+.custom-range{font-size:15.5px}
+.kpi strong{font-size:27px}
+.donut b{font-size:29px}
+.legend li{font-size:16px}
+.bars-legend{font-size:14.5px}
+.bar-pair em{font-size:14px}
+.hbar{font-size:16px}
+.unit-type{font-size:14.5px}
+.section-title{font-size:19.5px}
+@media(max-width:960px){
+  .cal-pill{font-size:12.5px}
+}
+@media(max-width:720px){
+  .detail-title h1{font-size:27px}
+}
+@media(max-width:720px){
+  h1,.page-header h1{font-size:25px}
+  .portal-header h1{font-size:25px}
+  .page-header p{font-size:16px}
+  .unit-identity h2{font-size:23px}
+  .profile-summary .avatar{font-size:23px}
+  .profile-summary h2{font-size:23px}
+}

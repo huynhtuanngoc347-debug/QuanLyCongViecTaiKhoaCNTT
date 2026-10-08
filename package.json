@@ -1,0 +1,26 @@
+{
+  "name": "khoa-cntt",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Quản lý công việc Khoa CNTT — React + NestJS + SQL Server",
+  "workspaces": [
+    "packages/shared",
+    "apps/api",
+    "apps/web",
+    "apps/mobile"
+  ],
+  "scripts": {
+    "build": "npm run build -w @khoa/shared && npm run build -w @khoa/api && npm run build -w @khoa/web && npm run build -w @khoa/mobile",
+    "dev:api": "npm run build -w @khoa/shared && npm run dev -w @khoa/api",
+    "dev:web": "npm run dev -w @khoa/web",
+    "start": "npm run start -w @khoa/api",
+    "test": "npm run test -w @khoa/api",
+    "typecheck": "npm run build -w @khoa/shared && npm run typecheck -w @khoa/api && npm run typecheck -w @khoa/web && npm run typecheck -w @khoa/mobile",
+    "smoke": "node tools/smoke.mjs",
+    "mock": "node tools/mock-api.mjs",
+    "dev:mobile": "npm run dev -w @khoa/mobile"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

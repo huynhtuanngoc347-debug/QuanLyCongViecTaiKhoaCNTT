@@ -1,0 +1,10 @@
+{
+  "name": "@khoa/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Kiểu dữ liệu (DTO) dùng chung cho API, web và app di động",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": { "build": "tsc -p tsconfig.json" },
+  "devDependencies": { "typescript": "~5.9.3" }
+}

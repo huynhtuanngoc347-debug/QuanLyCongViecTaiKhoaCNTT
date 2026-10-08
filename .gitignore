@@ -1,0 +1,13 @@
+node_modules/
+dist/
+dist-test/
+# Bí mật: mọi tệp .env (kể cả bản sao lưu), chỉ giữ tệp mẫu
+.env
+.env.*
+!.env.example
+apps/api/App_Data/
+*.log
+.DS_Store
+Thumbs.db
+# Cấu hình riêng từng máy (có JWT_SECRET thật)
+apps/api/env-windows.txt

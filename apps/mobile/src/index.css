@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+/* Hệ màu theo bản thiết kế "Premium Mobile App Redesign" (Figma Make) */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+}
+
+:root {
+  --background: #f7f8fc;
+  --foreground: #1c2740;
+  --border: #e7eaf2;
+  --primary: #3563ee;
+}
+
+.dark {
+  --background: #111b2d;
+  --foreground: #e6ecf7;
+  --border: #2e3b52;
+  color: var(--foreground);
+  color-scheme: dark;
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; background: #e9edf5; color: #1c2740; }
+  button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+  button, a { touch-action: manipulation; }
+  button { cursor: pointer; }
+  button:disabled { cursor: default; opacity: .6; }
+  :focus-visible { outline: 3px solid #8fa8fb; outline-offset: 3px; }
+  input, select, textarea { font-size: 16px; } /* tránh iOS tự phóng to khi chạm ô nhập */
+}
+
+@layer utilities {
+  .dark .bg-white, .dark .bg-white\/95 { background-color: #1c2940; }
+  .dark .text-slate-500, .dark .text-slate-600, .dark .text-slate-700 { color: #b1bfd5; }
+  .dark .text-slate-400 { color: #92a3be; }
+  .dark .bg-blue-50, .dark .bg-\[\#edf2ff\], .dark .bg-\[\#e9eefe\], .dark .bg-\[\#eef1fa\] { background-color: #223657; }
+  .dark .bg-slate-100 { background-color: #22304a; }
+  .dark .from-blue-50 { --tw-gradient-from: #223657; }
+  .dark .to-\[\#e9edfb\] { --tw-gradient-to: #1c2940; }
+}
+
+@keyframes enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes sheet { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@utility animate-enter { animation: enter 240ms ease-out; }
+@utility animate-sheet { animation: sheet 260ms cubic-bezier(.2,.8,.2,1); }
+@media (prefers-reduced-motion: reduce) { .animate-enter, .animate-sheet { animation: none; } }
