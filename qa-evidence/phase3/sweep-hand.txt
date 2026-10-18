@@ -1,0 +1,29 @@
+[hand] login 200
+[hand] 1366 /ca-nhan                           h1="Xin chào, Ngô Dương Hà"
+[hand] 1366 /cong-viec                         h1="Công việc"
+[hand] 1366 /cong-viec/chi-tiet?id=1           h1="[DEMO-01] Rà soát đề cương môn Phân tích dữ liệu"
+[hand] 1366 /cong-viec/chi-tiet?id=16          h1="" EVENTS=2
+        http: 404 /api/cong-viec/16
+        http: 404 /api/cong-viec/16
+[hand] 1366 /cong-viec/chi-tiet?id=31          h1="[THỬ-P3 mvbhr6zi] Biên soạn đề cương"
+[hand] 1366 /thong-bao                         h1="Thông báo"
+[hand] 1366 /ho-so?id=3                        h1="Hồ sơ nhân sự"
+[hand] 1366 /ho-so?id=33                       h1="Xin chào, Ngô Dương Hà"
+[hand] 1366 /thong-ke-ca-nhan                  h1="Thống kê của tôi"
+[hand] 1366 /admin                             h1="Xin chào, Ngô Dương Hà"
+[hand] 1366 /nhan-su                           h1="Xin chào, Ngô Dương Hà"
+[hand] 1366 /khong-co-trang-nay                h1="Không tìm thấy trang"
+[hand] 390 /ca-nhan                           h1="Xin chào, Ngô Dương Hà"
+[hand] 390 /cong-viec                         h1="Công việc"
+[hand] 390 /cong-viec/chi-tiet?id=1           h1="[DEMO-01] Rà soát đề cương môn Phân tích dữ liệu"
+[hand] 390 /cong-viec/chi-tiet?id=16          h1="" EVENTS=2
+        http: 404 /api/cong-viec/16
+        http: 404 /api/cong-viec/16
+[hand] 390 /cong-viec/chi-tiet?id=31          h1="[THỬ-P3 mvbhr6zi] Biên soạn đề cương"
+[hand] 390 /thong-bao                         h1="Thông báo"
+[hand] 390 /ho-so?id=3                        h1="ThS. Ngô Dương Hà"
+[hand] 390 /ho-so?id=33                       h1="Xin chào, Ngô Dương Hà"
+[hand] 390 /thong-ke-ca-nhan                  h1="Thống kê của tôi"
+[hand] 390 /admin                             h1="Xin chào, Ngô Dương Hà"
+[hand] 390 /nhan-su                           h1="Xin chào, Ngô Dương Hà"
+[hand] 390 /khong-co-trang-nay                h1="Không tìm thấy trang"

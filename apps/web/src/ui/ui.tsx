@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { closeDialog } from '../motion';
 
 // ---------------- Biểu tượng (tệp SVG có sẵn trong public/assets) ----------------
 const ICON_FILES = {
@@ -191,7 +192,7 @@ export const useUi = (): UiApi => {
 };
 
 export function UiProvider({ children }: { children: ReactNode }) {
-  const [toastState, setToast] = useState<{ message: string; error: boolean } | null>(null);
+  const [toastState, setToast] = useState<{ message: string; error: boolean; leaving?: boolean } | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const [askState, setAsk] = useState<{ message: string; title: string; yes: string; resolve: (v: boolean) => void } | null>(null);
   const [secret, setSecret] = useState<{ title: string; message: string; value: string } | null>(null);
@@ -202,7 +203,11 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const toast = useCallback((message: string, error = false) => {
     window.clearTimeout(timer.current);
     setToast({ message, error });
-    timer.current = window.setTimeout(() => setToast(null), 4500);
+    // Hết giờ: chạy hiệu ứng trượt ra (200 ms) rồi mới ẩn hẳn.
+    timer.current = window.setTimeout(() => {
+      setToast((t) => (t ? { ...t, leaving: true } : t));
+      timer.current = window.setTimeout(() => setToast(null), 200);
+    }, 4500);
   }, []);
   const ask = useCallback((message = 'Những thay đổi chưa lưu sẽ bị bỏ.', title = 'Rời khỏi biểu mẫu?', yes = 'Rời khỏi') =>
     new Promise<boolean>((resolve) => setAsk({ message, title, yes, resolve })), []);
@@ -210,13 +215,13 @@ export function UiProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { if (askState && askRef.current && !askRef.current.open) askRef.current.showModal(); }, [askState]);
   useEffect(() => { if (secret && secretRef.current && !secretRef.current.open) secretRef.current.showModal(); }, [secret]);
-  const finishAsk = (v: boolean) => { askRef.current?.close(); askState?.resolve(v); setAsk(null); };
-  const closeSecret = () => { secretRef.current?.close(); setSecret(null); };
+  const finishAsk = (v: boolean) => { askState?.resolve(v); closeDialog(askRef.current, () => setAsk(null)); };
+  const closeSecret = () => closeDialog(secretRef.current, () => setSecret(null));
 
   return (
     <UiContext.Provider value={{ toast, ask, showSecret }}>
       {children}
-      <div id="toast" className={`toast${toastState?.error ? ' error' : ''}`} role="status" aria-live="polite" hidden={!toastState}>{toastState?.message}</div>
+      <div id="toast" key={toastState?.message} className={`toast${toastState?.error ? ' error' : ''}${toastState?.leaving ? ' leaving' : ''}`} role="status" aria-live="polite" hidden={!toastState}>{toastState?.message}</div>
       {askState ? (
         <dialog ref={askRef} id="confirm-dialog" aria-labelledby="confirm-title" onCancel={(e) => { e.preventDefault(); finishAsk(false); }}>
           <h2 id="confirm-title">{askState.title}</h2>

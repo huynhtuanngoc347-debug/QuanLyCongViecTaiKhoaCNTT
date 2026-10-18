@@ -27,7 +27,8 @@
 
 @layer base {
   html { -webkit-text-size-adjust: 100%; }
-  body { font-family: 'Plus Jakarta Sans', sans-serif; background: #e9edf5; color: #1c2740; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500; background: #e9edf5; color: #1c2740; }
+  input::placeholder, textarea::placeholder { font-weight: 400; }
   button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   button, a { touch-action: manipulation; }
   button { cursor: pointer; }

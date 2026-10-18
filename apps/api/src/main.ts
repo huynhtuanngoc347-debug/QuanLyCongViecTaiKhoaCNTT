@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import type { NextFunction, Request, Response } from 'express';
 import { AppModule, CUSTOM_UNIT_TYPE_SQL, TASK_MODULE_SQL } from './app.module';
 import { appConfig } from './config';
+import { securityHeaders } from './common/security-headers';
 import { DbService } from './db/db.service';
 
 async function bootstrap(): Promise<void> {
@@ -17,12 +18,7 @@ async function bootstrap(): Promise<void> {
   app.disable('x-powered-by');
   app.useBodyParser('json', { limit: '2mb' });
   app.use(cookieParser());
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Referrer-Policy', 'same-origin');
-    if (req.path.startsWith('/api')) res.setHeader('Cache-Control', 'no-store');
-    next();
-  });
+  app.use(securityHeaders);
   if (appConfig.corsOrigins.length > 0) {
     app.enableCors({ origin: appConfig.corsOrigins, credentials: true });
   }

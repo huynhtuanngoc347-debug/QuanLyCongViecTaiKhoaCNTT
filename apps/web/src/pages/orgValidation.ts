@@ -22,7 +22,7 @@ function unitFieldErrors(errors: V, name: string, type: string, prefix: string, 
 }
 
 function parentError(data: OrganizationDto, value: string, whose: string): string {
-  if (!value) return `Chưa chọn đơn vị cha cho ${whose}. Chọn một đơn vị, “Đơn vị gốc” hoặc “Tạo đơn vị cha mới”.`;
+  if (!value || value === NO_PARENT) return `Chưa chọn đơn vị cha cho ${whose}. Mọi đơn vị phải trực thuộc khoa: chọn một đơn vị trong khoa hoặc “Tạo đơn vị cha mới”.`;
   const parent = data.units.find((u) => u.id === Number(value));
   if (!parent) return `Đơn vị cha mã ${value} không còn tồn tại. Tải lại trang rồi chọn lại.`;
   if (!parent.active) return `Đơn vị cha “${parent.name}” đang ngừng hoạt động. Chọn đơn vị khác hoặc kích hoạt lại “${parent.name}” trước.`;
@@ -43,7 +43,12 @@ export function unitErrors(data: OrganizationDto, input: V): V {
   const description = clean(input.description);
   if (description.length > 1000) errors.description = `Mô tả dài ${description.length} ký tự; tối đa 1.000 ký tự.`;
   if (!isBool(input.active)) errors.active = 'Chọn trạng thái: Đang hoạt động hoặc Ngừng hoạt động.';
-  const mode = input.parentId === NO_PARENT ? 'none' : input.parentId === NEW_PARENT ? 'new' : 'existing';
+  // Hệ thống chỉ có một khoa (đơn vị gốc): không tạo thêm đơn vị loại "Khoa".
+  const root = data.units.find((u) => u.parentId == null);
+  const faculty = (t: string) => collapse(t).toLocaleLowerCase('vi') === 'khoa';
+  if (root && !errors.type && faculty(input.type)) errors.type = `Hệ thống chỉ có một khoa (${root.name}). Chọn loại khác, ví dụ Bộ môn, Trung tâm, Nhóm.`;
+  if (root && input.parentId === NEW_PARENT && faculty(input.newParentType ?? '')) errors.newParentType = `Hệ thống chỉ có một khoa (${root.name}). Chọn loại khác cho đơn vị cha mới.`;
+  const mode = root && input.parentId === NO_PARENT ? 'existing' : input.parentId === NO_PARENT ? 'none' : input.parentId === NEW_PARENT ? 'new' : 'existing';
   if (mode === 'existing') {
     const e = parentError(data, input.parentId, 'đơn vị mới');
     if (e) errors.parentId = e;
@@ -53,11 +58,11 @@ export function unitErrors(data: OrganizationDto, input: V): V {
   } else {
     unitFieldErrors(errors, input.newParentName, input.newParentType, 'newParent', 'đơn vị cha mới');
     let grandId: number | null = null;
-    if (input.newParentParentId !== NO_PARENT) {
+    if (root || input.newParentParentId !== NO_PARENT) {
       const e = parentError(data, input.newParentParentId, 'đơn vị cha mới');
       if (e) errors.newParentParentId = e; else grandId = Number(input.newParentParentId);
     }
-    if (!errors.newParentName && !errors.newParentParentId) { const d = siblingError(data, grandId, input.newParentName); if (d) errors.newParentName = d; }
+    if (!errors.newParentName && !errors.newParentParentId && !errors.newParentType) { const d = siblingError(data, grandId, input.newParentName); if (d) errors.newParentName = d; }
     if (!errors.name && !errors.newParentName && sameName(input.name, input.newParentName)) errors.name = 'Tên đơn vị trùng tên đơn vị cha mới. Đặt tên khác để dễ phân biệt.';
   }
   return errors;

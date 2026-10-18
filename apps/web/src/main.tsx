@@ -20,7 +20,11 @@ import { AuditPage, CategoriesPage, NotificationsPage, TemplatesPage } from './t
 import './styles-scale.css';
 import './gv.css';
 import './theme.css';
+import './typography.css';
 import './mobile.css';
+import './motion.css';
+import { initMotion } from './motion';
+import { installHistoryIndex, trackHistoryIndex } from './historyIndex';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,6 +52,8 @@ function Providers() {
   return <SessionProvider onExpired={expired}><Root /></SessionProvider>;
 }
 
+// Phải chạy trước createHashRouter (xem historyIndex.ts).
+installHistoryIndex();
 const router = createHashRouter([
   {
     path: '/',
@@ -83,6 +89,10 @@ const router = createHashRouter([
     ],
   },
 ]);
+trackHistoryIndex(router);
+
+// Hệ thống chuyển động (xuất hiện khi cuộn, đếm số, thanh trên đổ bóng) — gắn một lần cho cả ứng dụng.
+initMotion(document.getElementById('app')!);
 
 createRoot(document.getElementById('app')!).render(
   <StrictMode>

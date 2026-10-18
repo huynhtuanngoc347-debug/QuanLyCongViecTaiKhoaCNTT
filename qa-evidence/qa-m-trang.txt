@@ -1,0 +1,30 @@
+[trangntt-m] login 200
+[trangntt-m] 1366 /                                  h1="Chào buổi sáng,Trang"
+[trangntt-m] 1366 /tasks                             h1="Công việc"
+[trangntt-m] 1366 /tasks?scope=review                h1="Công việc"
+[trangntt-m] 1366 /tasks/2                           h1="Chi tiết công việc"
+[trangntt-m] 1366 /tasks/2/update                    h1="Cập nhật tiến độ"
+[trangntt-m] 1366 /tasks/2/submit                    h1="Nộp kết quả"
+[trangntt-m] 1366 /tasks/16                          h1="Chi tiết công việc" EVENTS=2
+        http: 404 /api/cong-viec/16
+        http: 404 /api/cong-viec/16
+[trangntt-m] 1366 /notifications                     h1="Thông báo"
+[trangntt-m] 1366 /profile                           h1="Hồ sơ cá nhân"
+[trangntt-m] 1366 /create                            h1="Tạo công việc mới"
+[trangntt-m] 1366 /filter                            h1="Tìm kiếm & bộ lọc"
+[trangntt-m] 1366 /khong-co                          h1=""
+[trangntt-m] 390 /                                  h1="Chào buổi sáng,Trang"
+        overflow els: DIV.absolute.-right-12
+[trangntt-m] 390 /tasks                             h1="Công việc"
+[trangntt-m] 390 /tasks?scope=review                h1="Công việc"
+[trangntt-m] 390 /tasks/2                           h1="Chi tiết công việc"
+[trangntt-m] 390 /tasks/2/update                    h1="Cập nhật tiến độ"
+[trangntt-m] 390 /tasks/2/submit                    h1="Nộp kết quả"
+[trangntt-m] 390 /tasks/16                          h1="Chi tiết công việc" EVENTS=2
+        http: 404 /api/cong-viec/16
+        http: 404 /api/cong-viec/16
+[trangntt-m] 390 /notifications                     h1="Thông báo"
+[trangntt-m] 390 /profile                           h1="Hồ sơ cá nhân"
+[trangntt-m] 390 /create                            h1="Tạo công việc mới"
+[trangntt-m] 390 /filter                            h1="Tìm kiếm & bộ lọc"
+[trangntt-m] 390 /khong-co                          h1=""

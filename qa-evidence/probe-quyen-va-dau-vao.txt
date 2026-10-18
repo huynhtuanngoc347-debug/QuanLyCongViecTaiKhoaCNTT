@@ -1,0 +1,63 @@
+COOKIE ATTRS: khoa_at=…; Max-Age=900; Path=/; Expires=Fri, 16 Oct 2026 19:09:12 GMT; HttpOnly; SameSite=Strict || khoa_rt=…; Max-Age=604800; Path=/api/auth; Expires=Fri, 23 Oct 2026 18:54:12 GMT; HttpOnly; SameSite=Strict
+A	anon GET /api/to-chuc	expect 401	got 401	{"message":"Vui lòng đăng nhập."}
+A	anon GET /api/cong-viec?scope=all	expect 401	got 401	{"message":"Vui lòng đăng nhập."}
+A	anon GET /api/tep/4	expect 401	got 401	{"message":"Vui lòng đăng nhập."}
+A	anon GET /api/nhan-su/3	expect 401	got 401	{"message":"Vui lòng đăng nhập."}
+A	anon GET /api/thong-ke/don-vi	expect 401	got 401	{"message":"Vui lòng đăng nhập."}
+hand scope ids 2,1,30
+B	hand GET /api/cong-viec/16	expect 403/404	got 404	{"message":"Không tìm thấy công việc hoặc bạn không có quyền xem."}
+B	hand GET /api/cong-viec/13	expect 403/404	got 404	{"message":"Không tìm thấy công việc hoặc bạn không có quyền xem."}
+B	hand GET /api/cong-viec/11	expect 403/404	got 404	{"message":"Không tìm thấy công việc hoặc bạn không có quyền xem."}
+B	hand GET /api/cong-viec/2	expect 200	got 200	{"summary":{"id":2,"title":"[DEMO-02] Chuẩn bị bộ dữ liệu thực hành khai phá dữ liệu","status":2,"priority":2,"progress":65,"start":"2026-09-17T21:42:08.000Z","due":"2026
+B	hand GET /api/cong-viec/16/binh-luan	expect 403/404	got 404	{"message":"Không tìm thấy công việc hoặc bạn không có quyền xem."}
+B	hand GET /api/cong-viec/13/binh-luan	expect 403/404	got 404	{"message":"Không tìm thấy công việc hoặc bạn không có quyền xem."}
+B	hand GET /api/cong-viec/16/lich-su	expect 403/404	got 404	{"message":"Không tìm thấy công việc hoặc bạn không có quyền xem."}
+B	hand GET /api/cong-viec/13/lich-su	expect 403/404	got 404	{"message":"Không tìm thấy công việc hoặc bạn không có quyền xem."}
+B	hand GET /api/tep/10	expect 403/404	got 404	{"message":"Không tìm thấy tệp hoặc bạn không có quyền tải."}
+B	hand GET /api/tep/4	expect 403/404	got 404	{"message":"Không tìm thấy tệp hoặc bạn không có quyền tải."}
+B	hand GET /api/tep/3	expect 403/404	got 404	{"message":"Không tìm thấy tệp hoặc bạn không có quyền tải."}
+B	hand GET /api/tep/21	expect 403/404	got 404	{"message":"Không tìm thấy tệp hoặc bạn không có quyền tải."}
+B	hand GET /api/nhat-ky	expect 403	got 403	{"message":"Chỉ quản trị hệ thống xem được nhật ký."}
+B	hand GET /api/thong-ke/don-vi	expect 403?	got 200	{"from":"2026-08-01","to":"2027-01-31","scopeLabel":"Bộ môn Khoa học dữ liệu","total":3,"open":1,"completed":2,"onTimePercent":100,"onTimeCount":2,"overdue":1,"passed":2,
+B	hand GET /api/thong-ke/ca-nhan?person=33	expect 403	got 200	{"from":"2026-08-01","to":"2027-01-31","person":{"id":3,"name":"Ngô Dương Hà","initials":"DH"},"subtitle":"Giảng viên · Bộ môn Khoa học dữ liệu","assigned":1,"lead":0,"su
+B	hand GET /api/nhan-su/33	expect ?	got 200	{"person":{"id":33,"employeeCode":"ND033","name":"Nguyễn Hồng Vũ","initials":"HV","email":"vunh@huit.edu.vn","degree":"Tiến sĩ","academicTitle":"","training":"","phone":"
+B	hand GET /api/nhan-su	expect ?	got 200	[{"id":26,"employeeCode":"ND026","name":"Bùi Công Danh","initials":"CD","email":"danhbc@huit.edu.vn","degree":"Thạc sĩ","academicTitle":"","training":"NCS","phone":"","ac
+B	hand GET /api/trang/admin	expect 403	got 403	{"message":"Tài khoản của bạn không có vai trò để vào trang này."}
+B	hand GET lua-chon-giao-viec?taskId=16	expect 403	got 200	{"people":[],"units":[]}
+C	hand POST /api/don-vi {}	expect 403	got 403	{"message":"Chỉ quản trị hệ thống được thêm đơn vị vào cơ cấu tổ chức."}
+C	hand POST /api/nhan-su {}	expect 403	got 403	{"message":"Chỉ quản trị hệ thống được quản lý tài khoản nhân sự."}
+C	hand PUT /api/nhan-su/33 {}	expect 403	got 403	{"message":"Chỉ quản trị hệ thống được quản lý tài khoản nhân sự."}
+C	hand PUT /api/nhan-su/999999/trang-thai {}	expect 403	got 400	{"message":"Vui lòng kiểm tra các trường được đánh dấu.","errors":{"active":"Chọn khóa hoặc mở khóa."}}
+C	hand DELETE /api/nhan-su/999999	expect 403	got 403	{"message":"Chỉ quản trị hệ thống được quản lý tài khoản nhân sự."}
+C	hand PUT /api/chuc-vu/999999/quyen "x"	expect 403	got 400	{"message":"Dữ liệu gửi lên không đúng định dạng."}
+C	hand POST /api/thanh-vien {}	expect 403	got 400	{"message":"Vui lòng kiểm tra các trường được đánh dấu.","errors":{"personId":"Chọn người dùng đang hoạt động.","unitId":"Chọn đơn vị đang hoạt động.","roleId":"Chọn chức
+C	hand POST /api/the-loai {}	expect 403	got 400	{"message":"Vui lòng kiểm tra các trường được đánh dấu.","errors":{"name":"Chưa nhập tên thể loại."}}
+C	hand DELETE /api/mau-cong-viec/999999	expect 403/404	got 404	{"message":"Không tìm thấy mẫu."}
+C	hand PUT /api/cong-viec/16 {}	expect 403	got 403	{"message":"Chỉ người tạo hoặc người có quyền giao việc ở đơn vị quản lý được sửa công việc."}
+C	hand POST cong-viec/16/trang-thai {action:zzz}	expect 403	got 403	{"message":"Chỉ người tạo hoặc người có quyền giao việc ở đơn vị quản lý được đổi trạng thái công việc."}
+C	hand POST cong-viec/16/phan-cong {}	expect 403	got 403	{"message":"Bạn không có quyền giao việc trên công việc này."}
+C	hand POST cong-viec/16/binh-luan {content:""}	expect 403	got 400	{"message":"Vui lòng kiểm tra các trường được đánh dấu.","errors":{"content":"Nhập nội dung hoặc đính kèm tệp."}}
+C	hand POST phan-cong/15/tien-do {percent:999}	expect 403	got 400	{"message":"Vui lòng kiểm tra các trường được đánh dấu.","errors":{"percent":"Tiến độ từ 0 đến 100%.","note":"Ghi lại đã làm được gì trong lần cập nhật này."}}
+C	hand POST ket-qua/10/danh-gia {decision:99}	expect 403	got 400	{"message":"Vui lòng kiểm tra các trường được đánh dấu.","errors":{"decision":"Chọn Đạt, Cần bổ sung hoặc Không đạt."}}
+C	hand POST phan-cong/15/gia-han {}	expect 403	got 403	{"message":"Chỉ người nhận việc được xin gia hạn."}
+C	hand POST phan-cong/15/huy {reason:""}	expect 403	got 400	{"message":"Vui lòng kiểm tra các trường được đánh dấu.","errors":{"reason":"Nhập lý do hủy phân công."}}
+C	hand POST phan-cong/15/xin-tu-choi {reason:""}	expect 403	got 400	{"message":"Vui lòng kiểm tra các trường được đánh dấu.","errors":{"reason":"Nhập lý do xin từ chối để người giao cân nhắc."}}
+D	GET /api/cong-viec/abc	expect 400	got 400	{"message":"Dữ liệu gửi lên không đúng định dạng."}
+D	GET /api/cong-viec/999999	expect 404	got 404	{"message":"Không tìm thấy công việc hoặc bạn không có quyền xem."}
+D	GET /api/cong-viec?scope=hacker	expect 400	got 200	{"items":[],"counts":{"assigned":0,"created":0,"all":23,"review":0,"overdue":7}}
+D	GET /api/thong-bao?limit=100000	expect 200 clamp	got 200	{"items":[{"id":30,"type":"HeThong","level":0,"title":"[DEMO] Đã nạp bộ dữ liệu mẫu","content":"[DEMO] 54 nhân sự theo tài liệu và các tình huống minh họa đã được tạo.","
+D	GET /api/nhat-ky?limit=-5	expect 400/clamp	got 200	[{"id":245,"action":"DangNhap","objectType":"NguoiDung","objectId":"33","actor":"Nguyễn Hồng Vũ","ip":"::1","at":"2026-10-16T18:54:12.000Z"}]
+D	GET thong-ke/don-vi from>to	expect 400	got 400	{"message":"Vui lòng kiểm tra các trường được đánh dấu.","errors":{"from":"Ngày kết thúc phải sau ngày bắt đầu."}}
+D	GET thong-ke/don-vi from=abc	expect 400	got 400	{"message":"Vui lòng kiểm tra các trường được đánh dấu.","errors":{"from":"Ngày thống kê không hợp lệ."}}
+D	GET thong-ke/don-vi 1900..2999	expect 200/400	got 400	{"message":"Vui lòng kiểm tra các trường được đánh dấu.","errors":{"from":"Kỳ thống kê tối đa 10 năm."}}
+D	POST login body rỗng	expect 400	got 400	{"message":"Vui lòng kiểm tra các trường được đánh dấu.","errors":{"email":"Nhập email đăng nhập.","password":"Nhập mật khẩu."}}
+D	POST login JSON hỏng	expect 400	got 400	{"message":"Dữ liệu gửi lên không đúng định dạng."}
+D	POST login email 5000 ký tự	expect 400	got 429	{"message":"Đăng nhập sai quá nhiều lần. Vui lòng thử lại sau 5 phút."}
+D	GET cong-viec?scope=all' OR 1=1--	expect 400	got 200	{"items":[],"counts":{"assigned":0,"created":0,"all":23,"review":0,"overdue":7}}
+D	GET /api/tep/999999	expect 404	got 404	{"message":"Không tìm thấy tệp hoặc bạn không có quyền tải."}
+D	GET /api/tep/-1	expect 400	got 404	{"message":"Không tìm thấy tệp hoặc bạn không có quyền tải."}
+D	POST login body 3MB	expect 413	got 500	{"message":"Máy chủ gặp lỗi. Vui lòng thử lại sau."}
+E	12 lần đăng nhập sai liên tiếp	expect 429	got 429	{"message":"Đăng nhập sai quá nhiều lần. Vui lòng thử lại sau 5 phút."}
+HEADERS /: content-security-policy=null | x-frame-options=null | x-content-type-options=nosniff | referrer-policy=same-origin | strict-transport-security=null | cache-control=no-cache
+HEADERS /api: x-content-type-options=nosniff | cache-control=no-store | access-control-allow-origin=null
+CORS evil origin → ACAO= null status 200

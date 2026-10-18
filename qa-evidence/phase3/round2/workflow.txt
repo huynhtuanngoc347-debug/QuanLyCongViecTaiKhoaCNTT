@@ -1,0 +1,47 @@
+Bản sao: http://localhost:5090  nhãn dữ liệu thử: [THỬ-P3 mvbk3x60]
+
+PASS AUTH-01 me 200, refresh 200, logout 204 và xóa cookie phiên — me=200 refresh=200 logout=204 xóa-cookie=true
+PASS NEW-P3-01 Refresh token đã lấy trước khi đăng xuất bị máy chủ từ chối sau đăng xuất — refresh-sau-logout=401
+PASS AUTH-02 Cookie httpOnly + SameSite=Strict —  Max-Age=900; Path=/; Expires=Fri, 16 Oct 2026 23:01:06 GMT; HttpOnly; SameSite=Strict ||  Max-Age=604800; Path=/api/auth; Expires=Fri, 23 Oct 2026 22:46:06 GMT; HttpOnly; SameSite=Strict
+PASS AUTH-03 Sai mật khẩu → 401, không đặt cookie — status=401 cookie=không
+PASS STAFF-01 Quản trị thêm nhân sự → 2xx, trả mật khẩu tạm — status=201 keys=person,temporaryPassword
+PASS STAFF-02 Email trùng (khác hoa/thường) → 400/409 có lỗi trường email — status=400 {"message":"Vui lòng kiểm tra các trường được đánh dấu.","errors":{"email":"Email đã được dùng cho tài khoản khác."}}
+PASS STAFF-03 Sửa → 2xx; đọc lại thấy tên/SĐT mới — put=200 get=200
+PASS STAFF-04 Giảng viên POST /api/nhan-su → 403 — status=403
+PASS PWD-01 Đăng nhập mật khẩu tạm 200; sai hiện tại 400/401; mk yếu 400; đổi đúng 2xx; mk cũ 401; mk mới 200 — login-tạm=200 sai=400 yếu=400 đổi=204 mk-cũ=401 mk-mới=200 
+PASS STAFF-05 Khóa → 2xx; cấp lại mk 2xx; tài khoản khóa đăng nhập bằng mk đúng vẫn bị từ chối — khóa=200 cấp-lại=200 login-khi-khóa=401 (thử sai=401)
+PASS ORG-01 Tạo đơn vị loại "Khoa" thứ hai → 400 — status=400 {"parentId":"Chưa chọn đơn vị cha cho đơn vị mới. Chọn một đơn vị trong khoa hoặc “Tạo đơn vị cha mới”.","type":"Hệ thống chỉ có một khoa (Khoa Công nghệ Thông 
+PASS ORG-02 Tạo đơn vị con → 2xx; đọc lại có trong /api/don-vi — status=201 id=15
+PASS ORG-03 Thêm thành viên → 2xx; thêm trùng → 4xx — them=201 trung=400 role=Giảng viên 
+PASS ORG-04 Giảng viên thêm thành viên → 403 — status=403
+PASS CAT-01 Thêm thể loại 2xx, sửa (ngừng) 2xx, đọc lại đã ngừng — them=200 sua=200 active=false
+PASS CAT-02 Mẫu: thêm 2xx, sửa 2xx, xóa 2xx, không còn trong danh sách — them=200 sua=200 xoa=200 
+PASS CAT-03 Giảng viên thêm thể loại → 403 — status=403
+PASS VAL-01 Hạn đã qua / tiêu đề rỗng / hạn trước ngày bắt đầu / ngày 30-02 / tiêu đề 251 ký tự / ưu tiên 9 → 400 đúng trường — 400:due 400:title 400:due 400:due 400:title 400:priority
+PASS VAL-02 Giảng viên tạo việc cho đơn vị Khoa (ngoài quyền) → 400 lỗi unitId hoặc 403 — status=400 {"unitId":"Bạn không có quyền tạo công việc cho đơn vị này."}
+PASS FLOW-01 Trưởng khoa tạo việc → 2xx, đọc lại đúng tiêu đề/ưu tiên — status=201 id=35
+PASS FLOW-02 Giao chủ trì + phối hợp 2xx; giao trùng 400; hạn riêng muộn hơn hạn chung 400; người được giao mới xem được việc — giao=200,200 trùng=400 hạn-muộn=400 xem-trước=404 xem-sau=200
+PASS AUTHZ-01 Giảng viên giao việc trên công việc của khoa → 403 — status=403
+PASS NOTI-01 Người nhận có thông báo về việc mới — số thông báo chưa đọc=1
+PASS FLOW-03 Nhận việc 2xx; nhận lại 409; tiến độ thiếu ghi chú/150% → 400; 50% lưu và có trong lịch sử tiến độ — nhận=200 nhận-lại=409 thiếu-ghi-chú=400 150%=400 lưu=200 progress=50
+PASS AUTHZ-02 Người khác nhận hộ phân công → 403; cập nhật tiến độ trước khi nhận → 4xx — nhận-hộ=403 trước-khi-nhận=409
+PASS FLOW-04 Bình luận + tệp 2xx; người giao đọc được; tải tệp đúng nội dung — status=200 tệp=ghi-chu.txt tải=200 disposition=attachment; filename="ghi-chu.txt"
+PASS AUTHZ-03 Người ngoài công việc tải tệp → 403/404 — status=404
+PASS VAL-03 Bình luận rỗng không tệp → 400 — status=400
+PASS FLOW-05 Hạn đề xuất đã qua → 400; xin gia hạn 2xx; xin trùng 4xx; trưởng khoa duyệt 2xx; duyệt lại 409; hạn phân công đổi sang ngày mới — hạn-qua=400 xin=200 trùng=409 duyệt=200 duyệt-lại=409 hạn-mới=2026-11-07T16:59:59.000Z
+PASS AUTHZ-04 Người xin tự duyệt gia hạn → 403 — status=403
+PASS FLOW-06 Nộp rỗng 400; nộp có tệp 2xx (status chờ duyệt=3); nộp tiếp khi chờ duyệt 409; "cần bổ sung" thiếu nhận xét 400; bổ sung 2xx; nộp lần 2 2xx; đạt → phân công hoàn thành (4) — rỗng=400 nộp1=200 trùng=409 thiếu-NX=400 bổ-sung=200 nộp2=200 đạt=200 trạng-thái=4 số-lần=2
+PASS AUTHZ-05 Người khác nộp hộ → 403; người nộp tự đánh giá → 403 — nộp-hộ=403 tự-đánh-giá=403
+PASS FLOW-07 Thiếu lý do 400; xin thôi 2xx; từ chối không lý do 400; đồng ý 2xx → phân công kết thúc (≥5) — thiếu-lý-do=400 xin=200 từ-chối-ko-lý-do=400 đồng-ý=200 trạng-thái=5
+PASS FLOW-08 Đóng công việc → 2xx, trạng thái Hoàn thành; lịch sử có ghi nhận — complete=200  trạng-thái=4 lịch-sử=23 dòng
+PASS REG-HIST Lịch sử không lặp tên người thao tác ("Tên Tên …") — dòng lặp=0
+PASS FLOW-09 Sửa công việc đã hoàn thành → bị từ chối (4xx) — status=409
+PASS FLOW-10 Nháp 2xx; giao trên nháp 409; công khai khi thiếu thể loại/hạn 400; sửa + công khai 2xx; tạm dừng 2xx; giao khi tạm dừng 409; tiếp tục 2xx; hủy thiếu lý do 400; hủy 2xx → trạng thái 6 — nháp=201 giao-nháp=409 công-khai-thiếu=400 sửa=200 công-khai=200 dừng=200 giao-khi-dừng=409 tiếp=200 hủy-thiếu=400 hủy=200 status=6
+PASS NOTI-02 Đánh dấu 1 thông báo 2xx; đọc tất cả 2xx → unread = 0 — một=200 tất-cả=200 unread 4→0
+PASS AUTHZ-06 Đánh dấu thông báo của người khác không có tác dụng (updated=0 hoặc 403/404) — status=200 {"updated":0}
+PASS STAT-01 Thống kê cá nhân của giảng viên được đọc sau luồng ghi (200) — status=200 keys=from,to,person,subtitle,assigned,lead,support,completed
+PASS AUDIT-01 Nhật ký có ghi nhận thao tác quản trị (thêm nhân sự / đơn vị / thể loại) — dòng=200; 5 hành động mới nhất: XoaMauCongViec | SuaTheLoai | ThemTheLoai | ThemThanhVien | MoKhoaTaiKhoan
+PASS STAFF-06 Xóa nhân sự mới → 2xx, đọc lại 404; xóa người đã có dữ liệu công việc → bị từ chối (4xx) — xóa=204 đọc-lại=404 xóa-người-có-dữ-liệu=409
+{"taskId":35,"staffId":62,"unitId":15,"tag":"[THỬ-P3 mvbk3x60]"}
+
+Kết quả: 42 PASS, 0 FAIL / 42 kiểm tra.

@@ -1,0 +1,14 @@
+[vunh-m] login 200
+[vunh-m] 1366 /                                  h1="Chào buổi sáng,Vũ"
+[vunh-m] 1366 /tasks?scope=review                h1="Công việc"
+[vunh-m] 1366 /tasks/7                           h1="Chi tiết công việc"
+[vunh-m] 1366 /tasks/31                          h1="Chi tiết công việc"
+[vunh-m] 1366 /create                            h1="Tạo công việc mới"
+[vunh-m] 1366 /profile                           h1="Hồ sơ cá nhân"
+[vunh-m] 390 /                                  h1="Chào buổi sáng,Vũ"
+        overflow els: DIV.absolute.-right-12
+[vunh-m] 390 /tasks?scope=review                h1="Công việc"
+[vunh-m] 390 /tasks/7                           h1="Chi tiết công việc"
+[vunh-m] 390 /tasks/31                          h1="Chi tiết công việc"
+[vunh-m] 390 /create                            h1="Tạo công việc mới"
+[vunh-m] 390 /profile                           h1="Hồ sơ cá nhân"

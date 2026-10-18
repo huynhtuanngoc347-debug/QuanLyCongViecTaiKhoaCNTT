@@ -1,0 +1,11 @@
+login hand 200
+  ✓ BUG-P2-01 tràn ngang chi tiết 390px — {"sw":390,"iw":390,"kvOver":0,"due":"Đã hoàn thành 14/09/2026"}
+  ✓ BUG-P3-07 /m/ công việc ngoài quyền báo "Không tìm thấy công việc" — {"title":"H1:Chi tiết công việc | H2:Không tìm thấy công việc","btn":"Về danh sách công việc"}
+  ✓ BUG-P3-07 /m/ trang cập nhật tiến độ của việc ngoài quyền — Công việc | Không tìm thấy công việc
+  ✓ Đối chứng: /m/ công việc có quyền vẫn mở bình thường — Chi tiết công việc
+  ✓ BUG-P3-08 /m/ trang 404 có h1 — Không tìm thấy trang
+login vunh 200
+  ✓ BUG-P3-06 đổi kỳ giữ từ khóa + sắp xếp — trước={"search":"trang","rows":1} link=#/thong-ke?q=trang&sort=overdue&period=year sau={"hash":"#/thong-ke?q=trang&sort=overdue&period=year","search":"trang","sort":"overdue","rows":1}
+JS errors: none
+
+Kết quả: 6 đạt, 0 lỗi.

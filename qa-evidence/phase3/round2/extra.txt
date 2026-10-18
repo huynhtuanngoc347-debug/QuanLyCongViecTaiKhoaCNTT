@@ -1,0 +1,4 @@
+PASS P1-01-PWD 10 lần sai mật khẩu hiện tại → 400; lần 11 → 429; nhập đúng khi đang khóa vẫn 429; người khác không bị khóa (400); đăng nhập vẫn được — sai=400,400,400,400,400,400,400,400,400,400,429 đúng-khi-khóa=429 người-khác=400 đăng-nhập=200
+PASS SUS-01 Người ngoài nộp kết quả vào phân công của người khác → 403 và không để lại tệp trên đĩa — phân công=2 (người nhận 8) status=403 thời-gian=27ms tệp-còn-lại=0 (5 MB đã được gửi lên trước khi bị từ chối)
+
+Kết quả: 2 PASS, 0 FAIL.

@@ -1,0 +1,4 @@
+PASS SUS-04 vào bằng nút "Tạo công việc" trong ứng dụng: form=#/cong-viec/tao sau-Back=#/cong-viec/tao hộp-thoại=["Rời khỏi biểu mẫu?Những thay đổi chưa lưu sẽ bị bỏ.Tiếp tục chỉnh sửaRời khỏi"] cảnh-báo-console=[]
+FAIL SUS-04 gõ địa chỉ #/cong-viec/tao vào thanh địa chỉ: form=#/cong-viec/tao sau-Back=#/cong-viec/tao hộp-thoại=[] cảnh-báo-console=[]
+
+Kết quả: 1 PASS, 1 FAIL.

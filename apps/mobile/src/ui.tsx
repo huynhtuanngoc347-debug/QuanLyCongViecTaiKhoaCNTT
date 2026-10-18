@@ -171,7 +171,7 @@ export function TaskCard({ task }: { task: TaskSummaryDto }) {
 }
 
 /** Trạng thái trống / đang tải / lỗi (theo bản thiết kế, bỏ biểu tượng trang trí). */
-export function StateView({ kind, title, text, action }: { kind: 'empty' | 'loading' | 'error'; title?: string; text?: string; action?: ReactNode }) {
+export function StateView({ kind, title, text, action, heading = 'h2' }: { kind: 'empty' | 'loading' | 'error'; title?: string; text?: string; action?: ReactNode; heading?: 'h1' | 'h2' }) {
   if (kind === 'loading') {
     return (
       <div role="status" className="space-y-4 py-6">
@@ -189,12 +189,27 @@ export function StateView({ kind, title, text, action }: { kind: 'empty' | 'load
       <div className={`mx-auto mb-6 flex size-24 items-center justify-center rounded-[30px] ${kind === 'empty' ? 'bg-blue-50 text-primary' : 'bg-orange-50 text-orange-500'}`}>
         {kind === 'empty' ? <ListTodo size={40} strokeWidth={1.4} /> : <AlertCircle size={40} strokeWidth={1.4} />}
       </div>
-      <h2 className="mb-3 text-xl font-bold">{title ?? (kind === 'empty' ? 'Không có công việc nào' : 'Chưa thể tải dữ liệu')}</h2>
+      {/* Trang chỉ có trạng thái này (404…) dùng h1 để trình đọc màn hình có tiêu đề trang (BUG-P3-08) */}
+      {heading === 'h1'
+        ? <h1 className="mb-3 text-xl font-bold">{title ?? (kind === 'empty' ? 'Không có công việc nào' : 'Chưa thể tải dữ liệu')}</h1>
+        : <h2 className="mb-3 text-xl font-bold">{title ?? (kind === 'empty' ? 'Không có công việc nào' : 'Chưa thể tải dữ liệu')}</h2>}
       <p className="mx-auto mb-6 max-w-72 text-[13px] leading-6 text-slate-500">
         {text ?? (kind === 'empty' ? 'Thử bộ lọc khác hoặc quay lại sau.' : 'Kết nối có thể đang gián đoạn hoặc nội dung không còn tồn tại.')}
       </p>
       {action}
     </div>
+  );
+}
+
+/** Màn hình lỗi khi tải một công việc: 404/403 → "Không tìm thấy", còn lại → lỗi tải dữ liệu (BUG-P3-07). */
+export function LoadError({ error }: { error: unknown }) {
+  const status = (error as { status?: number })?.status;
+  const missing = status === 404 || status === 403;
+  return (
+    <StateView kind={missing ? 'empty' : 'error'}
+      title={missing ? 'Không tìm thấy công việc' : undefined}
+      text={missing ? 'Công việc không tồn tại, đã bị xóa hoặc bạn không có quyền xem.' : (error as Error).message}
+      action={missing ? <Link to="/tasks" className={`${button} mx-auto w-fit`}>Về danh sách công việc</Link> : undefined} />
   );
 }
 

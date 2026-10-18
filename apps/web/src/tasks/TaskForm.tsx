@@ -93,11 +93,11 @@ export function TaskFormPage({ editing }: { editing: boolean }) {
   useTitle(editing ? 'Sửa công việc' : 'Tạo công việc');
 
   if (editing) {
-    if (!detail.data && detail.error) return <Failed error={detail.error} onRetry={() => void detail.refetch()} />;
+    if (!detail.data && detail.error) return <Failed page error={detail.error} onRetry={() => void detail.refetch()} />;
     if (!detail.data) return <Loading />;
-    if (!detail.data.permissions.canEdit) return <Failed error={{ status: 403, message: 'Bạn không có quyền sửa công việc này.' }} />;
+    if (!detail.data.permissions.canEdit) return <Failed page error={{ status: 403, message: 'Bạn không có quyền sửa công việc này.' }} />;
   } else if (templateId && !templates.data) {
-    return templates.error ? <Failed error={templates.error} /> : <Loading />;
+    return templates.error ? <Failed page error={templates.error} /> : <Loading />;
   }
   const d = detail.data;
   const tpl = templates.data?.find((x) => x.id === templateId);

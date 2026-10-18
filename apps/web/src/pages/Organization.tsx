@@ -10,6 +10,7 @@ import { formValues, useDirtyGuard, useTitle } from './common';
 import { UnitPicker } from '../ui/UnitPicker';
 import { PersonPicker } from '../ui/PersonPicker';
 import { Glyph } from '../ui/glyph';
+import { Combobox, type ComboOption } from '../ui/Combobox';
 import { useIsMobile } from '../ui/useIsMobile';
 import { MyProfileMobile } from './MyProfile';
 import { NEW_PARENT, NO_PARENT, PERMISSIONS, UNIT_TYPES, membershipErrors, passwordErrors, personBody, personErrors, unitBody, unitErrors } from './orgValidation';
@@ -372,16 +373,21 @@ export function UnitFormPage() {
   const guard = useDirtyGuard();
   const [errors, setErrors] = useState<Record<string, string> | null>(null);
   const [message, setMessage] = useState('');
+  // Hệ thống chỉ phục vụ một khoa (đơn vị gốc): đơn vị mới mặc định trực thuộc khoa, không tạo thêm đơn vị gốc.
+  const root = org.units.find((u) => u.parentId == null);
   const requested = org.units.find((u) => u.id === Number(params.get('parent')) && u.active);
-  const [parentId, setParentId] = useState(requested ? String(requested.id) : '');
-  const [newParentParent, setNewParentParent] = useState(NO_PARENT);
+  const [parentId, setParentId] = useState(requested ? String(requested.id) : root ? String(root.id) : '');
+  const [newParentParent, setNewParentParent] = useState(root ? String(root.id) : NO_PARENT);
   const [draft, setDraft] = useState<Record<string, string>>({});
   useTitle('Thêm đơn vị');
   if (!session?.capabilities.canCreateUnit) return <><PageHeader title="Thêm đơn vị" description="Chỉ quản trị hệ thống được thêm đơn vị vào cơ cấu." /><div className="card card-pad"><ButtonLink to="/to-chuc" kind="secondary">Về cơ cấu tổ chức</ButtonLink></div></>;
-  const types = [...new Map([...UNIT_TYPES, ...org.units.map((u) => u.type)].filter(Boolean).map((t) => [normalize(t), t])).values()];
+  // Gợi ý loại đơn vị (bỏ "Khoa": hệ thống chỉ có một khoa) kèm số đơn vị đang có của từng loại.
+  const types: ComboOption[] = [...new Map([...UNIT_TYPES, ...org.units.map((u) => u.type)].filter(Boolean).map((t) => [normalize(t), t])).values()]
+    .filter((t) => normalize(t) !== 'khoa')
+    .map((t) => { const n = org.units.filter((u) => normalize(u.type) === normalize(t)).length; return [t, n ? `${n} đơn vị` : ''] as ComboOption; });
   const typeInput = (name: string, label: string) => (
     <Field name={name} label={label} error={errors?.[name]}>
-      <input id={name} name={name} type="text" list="unit-type-list" maxLength={30} autoComplete="off" placeholder="Chọn gợi ý hoặc nhập loại mới" aria-describedby={`${name}-error`} aria-invalid={errors?.[name] ? true : undefined} />
+      <Combobox name={name} label={label} options={types} maxLength={30} placeholder="Chọn hoặc nhập loại mới" invalid={!!errors?.[name]} />
     </Field>
   );
   const showNew = parentId === NEW_PARENT || Object.keys(errors ?? {}).some((k) => k.startsWith('newParent'));
@@ -414,7 +420,7 @@ export function UnitFormPage() {
                 {typeInput('type', 'Loại đơn vị *')}
                 <UnitPicker name="parentId" label="Đơn vị cha *" units={org.units} value={parentId} placeholder="Chọn đơn vị cha" error={errors?.parentId}
                   onChange={(v) => { setParentId(v); guard.markDirty(); }}
-                  specials={[{ value: NO_PARENT, label: 'Đơn vị gốc', hint: 'Không có đơn vị cha', icon: 'layers' }, { value: NEW_PARENT, label: 'Tạo đơn vị cha mới', hint: 'Nhập thông tin đơn vị cha ngay bên dưới', icon: 'plus' }]} />
+                  specials={[{ value: NEW_PARENT, label: 'Tạo đơn vị cha mới', hint: 'Ví dụ tạo Trung tâm mới rồi đặt đơn vị này bên trong', icon: 'plus' }]} />
               </div>
               <fieldset id="new-parent-box" className="new-parent" hidden={!showNew}>
                 <legend>Đơn vị cha mới</legend>
@@ -423,12 +429,11 @@ export function UnitFormPage() {
                   {typeInput('newParentType', 'Loại đơn vị cha *')}
                   <UnitPicker name="newParentParentId" label="Đơn vị cha mới trực thuộc" units={org.units} value={newParentParent} error={errors?.newParentParentId}
                     onChange={(v) => { setNewParentParent(v); guard.markDirty(); }}
-                    specials={[{ value: NO_PARENT, label: 'Đơn vị gốc', hint: 'Đơn vị cha mới không trực thuộc đơn vị nào', icon: 'layers' }]} />
+                    specials={[]} />
                 </div>
               </fieldset>
               <Textarea name="description" label="Mô tả" rows={3} maxLength={1000} placeholder="Mô tả chức năng của đơn vị" error={errors?.description} />
               <Field name="active" label="Trạng thái" error={errors?.active}><Seg name="active" items={[['true', 'Đang hoạt động'], ['false', 'Ngừng hoạt động']]} value="true" /></Field>
-              <datalist id="unit-type-list">{types.map((t) => <option key={t} value={t} />)}</datalist>
               <div className="actions form-actions"><button className="button" type="submit">Tạo đơn vị</button><ButtonLink to="/to-chuc" kind="secondary">Hủy</ButtonLink></div>
             </div>
           </form>
@@ -473,7 +478,8 @@ function UnitPlacement({ units, parentId, draft, newParentParent }: { units: Uni
         <h3>Lưu ý</h3>
         <ul>
           <li>Mã đơn vị do hệ thống tự cấp sau khi lưu.</li>
-          <li>Chọn “Tạo đơn vị cha mới” để tạo cả đơn vị cha trong cùng một lần lưu.</li>
+          <li>Mọi đơn vị đều thuộc Khoa Công nghệ Thông tin; hệ thống không tạo thêm khoa khác.</li>
+          <li>Chọn “Tạo đơn vị cha mới” để tạo cả đơn vị cha (ví dụ một Trung tâm) trong cùng một lần lưu.</li>
           <li>Sau khi tạo, thêm thành viên và chức vụ ở trang Cơ cấu tổ chức.</li>
         </ul>
       </div>
@@ -579,7 +585,11 @@ export function ProfilePage() {
 }
 
 // ===================== THÊM / SỬA NHÂN SỰ =====================
-const DEGREES = ['Cử nhân', 'Kỹ sư', 'Thạc sĩ', 'Tiến sĩ'], TITLES = ['PGS', 'GS'], TRAINING = ['NCS', 'Cao học'];
+/** Gợi ý [giá trị lưu, mô tả]. Giữ cách viết tắt đang có trong dữ liệu (PGS, NCS) để thống kê không bị tách. */
+const DEGREES: ComboOption[] = [['Cử nhân', ''], ['Kỹ sư', ''], ['Thạc sĩ', ''], ['Tiến sĩ', '']];
+const TITLES: ComboOption[] = [['PGS', 'Phó Giáo sư'], ['GS', 'Giáo sư']];
+const TRAINING: ComboOption[] = [['NCS', 'Nghiên cứu sinh'], ['Cao học', 'Đang học thạc sĩ']];
+
 
 export function PersonFormPage({ editing }: { editing: boolean }) {
   const { org, isAdmin, reloadOrg, refreshSession } = useSession();
@@ -595,10 +605,10 @@ export function PersonFormPage({ editing }: { editing: boolean }) {
   useTitle(editing ? 'Chỉnh sửa thông tin' : 'Thêm nhân sự');
   if (!isAdmin) return <><PageHeader title={editing ? 'Chỉnh sửa nhân sự' : 'Thêm nhân sự'} description="Chỉ quản trị hệ thống được quản lý tài khoản nhân sự." /><div className="card card-pad"><ButtonLink to="/nhan-su" kind="secondary">Về danh sách nhân sự</ButtonLink></div></>;
   if (editing && !person) return <><PageHeader title="Không tìm thấy hồ sơ" description="Người dùng không tồn tại hoặc đã bị xóa." /><ButtonLink to="/nhan-su">Về danh sách nhân sự</ButtonLink></>;
-  const text = (name: string, label: string, value: string, list: string[] | null, attrs: Record<string, unknown> = {}) => (
+  const text = (name: string, label: string, value: string, list: ComboOption[] | null, attrs: Record<string, unknown> = {}) => (
     <Field name={name} label={label} error={errors?.[name]}>
-      <input id={name} name={name} type="text" defaultValue={value} list={list ? `${name}-list` : undefined} aria-describedby={`${name}-error`} aria-invalid={errors?.[name] ? true : undefined} {...attrs} />
-      {list ? <datalist id={`${name}-list`}>{list.map((x) => <option key={x} value={x} />)}</datalist> : null}
+      {list ? <Combobox name={name} label={label} defaultValue={value} options={list} invalid={!!errors?.[name]} placeholder={attrs.placeholder as string | undefined} maxLength={attrs.maxLength as number | undefined} />
+        : <input id={name} name={name} type="text" defaultValue={value} aria-describedby={`${name}-error`} aria-invalid={errors?.[name] ? true : undefined} {...attrs} />}
     </Field>
   );
   const cancel = editing ? `/ho-so?id=${personId}` : '/nhan-su';
@@ -651,9 +661,9 @@ export function PersonFormPage({ editing }: { editing: boolean }) {
               <fieldset className="form-section">
                 <legend>Học hàm, học vị</legend>
                 <div className="three-col">
-                  {text('degree', 'Học vị', person?.degree ?? '', DEGREES, { maxLength: 50, placeholder: 'Ví dụ: Thạc sĩ' })}
-                  {text('academicTitle', 'Học hàm', person?.academicTitle ?? '', TITLES, { maxLength: 50, placeholder: 'Ví dụ: Phó Giáo sư' })}
-                  {text('training', 'Tình trạng đào tạo', person?.training ?? '', TRAINING, { maxLength: 100, placeholder: 'Ví dụ: Đang học Tiến sĩ' })}
+                  {text('degree', 'Học vị', person?.degree ?? '', DEGREES, { maxLength: 50, placeholder: 'Chọn hoặc nhập học vị' })}
+                  {text('academicTitle', 'Học hàm', person?.academicTitle ?? '', TITLES, { maxLength: 50, placeholder: 'Để trống nếu chưa có' })}
+                  {text('training', 'Tình trạng đào tạo', person?.training ?? '', TRAINING, { maxLength: 100, placeholder: 'Để trống nếu không đang học' })}
                 </div>
               </fieldset>
               <div className="actions form-actions"><button className="button" type="submit">{editing ? 'Lưu thay đổi' : 'Thêm nhân sự'}</button><ButtonLink to={cancel} kind="secondary">Hủy</ButtonLink></div>

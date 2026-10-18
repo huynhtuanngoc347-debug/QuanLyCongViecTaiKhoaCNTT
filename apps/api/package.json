@@ -8,7 +8,7 @@
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.test.json && node --test dist-test/core.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test dist-test/core.test.js dist-test/regression.test.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.0",

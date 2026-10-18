@@ -4,7 +4,7 @@ import { Check, FileUp, Info, ShieldCheck, Upload, X } from 'lucide-react';
 import type { AssignmentDto, TaskDetailDto } from '@khoa/shared';
 import { send, upload } from '../api';
 import { useSession } from '../session';
-import { FieldError, PageHeader, StateView, button, field, useAfterChange, useTaskDetail, useUi } from '../ui';
+import { FieldError, LoadError, PageHeader, StateView, button, field, useAfterChange, useTaskDetail, useUi } from '../ui';
 import { kb, relative } from '../format';
 
 /** Lấy chi tiết + phân công của chính người dùng; trả về màn hình lỗi nếu không có quyền thao tác. */
@@ -12,7 +12,7 @@ function useMine(): { d?: TaskDetailDto; a?: AssignmentDto; view?: React.ReactNo
   const id = Number(useParams().id);
   const q = useTaskDetail(id);
   const { session } = useSession();
-  if (!q.data) return { view: q.error ? <StateView kind="error" text={(q.error as Error).message} /> : <StateView kind="loading" /> };
+  if (!q.data) return { view: q.error ? <><PageHeader title="Công việc" back="/tasks" /><LoadError error={q.error} /></> : <StateView kind="loading" /> };
   const d = q.data;
   const a = d.assignments.find((x) => x.id === d.summary.myAssignmentId) ?? d.assignments.find((x) => x.personId === session?.user.id && x.status < 5);
   if (!a) return { view: <><PageHeader title="Không thực hiện được" back /><StateView kind="error" text="Bạn không được giao việc này nên không cập nhật được." /></> };

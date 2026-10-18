@@ -5,7 +5,7 @@ import { BellRing, CalendarDays, Check, ClipboardCheck, Download, FileText, Flag
 import type { AssignmentDto, CommentDto, FileDto, ResultDto, TaskDetailDto } from '@khoa/shared';
 import { api, get, send, upload } from '../api';
 import { useSession } from '../session';
-import { Avatar, Badge, FieldError, PageHeader, PRIORITY, Progress, SectionTitle, Sheet, StateView, button, buttonGhost, field, statusOf, useAfterChange, useTaskDetail, useUi } from '../ui';
+import { Avatar, Badge, FieldError, LoadError, PageHeader, PRIORITY, Progress, SectionTitle, Sheet, StateView, button, buttonGhost, field, statusOf, useAfterChange, useTaskDetail, useUi } from '../ui';
 import { friendly, fullDate, kb, relative, remaining } from '../format';
 
 const A_STATUS: Record<number, string> = { 0: 'Chờ tiếp nhận', 1: 'Đã tiếp nhận', 2: 'Đang làm', 3: 'Chờ duyệt', 4: 'Hoàn thành', 5: 'Từ chối', 6: 'Đã hủy' };
@@ -232,7 +232,7 @@ export function TaskDetail() {
   const [menu, setMenu] = useState(false);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [busy, setBusy] = useState(false);
-  if (!q.data) return q.error ? <><PageHeader title="Chi tiết công việc" back="/tasks" /><StateView kind="error" text={(q.error as Error).message} /></> : <StateView kind="loading" />;
+  if (!q.data) return q.error ? <><PageHeader title="Chi tiết công việc" back="/tasks" /><LoadError error={q.error} /></> : <StateView kind="loading" />;
   const d = q.data, t = d.summary;
   const mine = d.assignments.find((a) => a.id === t.myAssignmentId) ?? d.assignments.find((a) => a.personId === session?.user.id && a.status < 5);
   const progress = mine ? mine.progress : t.progress;

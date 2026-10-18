@@ -1,0 +1,121 @@
+/* =========================================================
+   Hệ thống chuyển động (motion system) — nạp sau cùng.
+   Nguyên tắc: chỉ animate transform/opacity; quãng di chuyển nhỏ (8–16px);
+   ra vào nhanh, nhất quán; tắt hết khi người dùng chọn giảm chuyển động.
+   ========================================================= */
+:root{
+  --dur-fast:160ms;        /* hover, nhấn nút */
+  --dur:240ms;             /* đổi trạng thái, menu, tab */
+  --dur-enter:520ms;       /* khối nội dung xuất hiện */
+  --ease-out:cubic-bezier(.22,1,.36,1);     /* vào: nhanh rồi chậm dần */
+  --ease-in-out:cubic-bezier(.65,0,.35,1);  /* đổi trạng thái */
+  --ease-in:cubic-bezier(.4,0,1,1);         /* ra */
+  --lift:0 1px 2px #0f172a0f,0 10px 24px -8px #1e3a8a26;
+}
+
+@keyframes m-fade{from{opacity:0}to{opacity:1}}
+@keyframes m-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes m-pop{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes m-dialog{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes m-dialog-out{to{opacity:0;transform:translateY(8px) scale(.98)}}
+@keyframes m-toast-in{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes m-toast-out{to{opacity:0;transform:translate(-50%,10px)}}
+@keyframes m-bar{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes m-shimmer{from{background-position:-200% 0}to{background-position:200% 0}}
+
+/* ---------- Chuyển trang: chỉ mờ dần (phần nội dung tự "trồi lên" theo từng khối bên dưới) ---------- */
+.page-anim{animation:m-fade var(--dur) var(--ease-out) both}
+
+/* ---------- Trang đăng nhập: khung trồi lên, chữ giới thiệu hiện lần lượt ---------- */
+.login-frame,.login-card{animation:m-rise var(--dur-enter) var(--ease-out) both}
+.login-hero-text>*{animation:m-rise var(--dur-enter) var(--ease-out) both}
+.login-hero-text>:nth-child(1){animation-delay:120ms}.login-hero-text>:nth-child(2){animation-delay:180ms}.login-hero-text>:nth-child(3){animation-delay:240ms}
+.login-features li{animation:m-rise var(--dur-enter) var(--ease-out) both}
+.login-features li:nth-child(1){animation-delay:300ms}.login-features li:nth-child(2){animation-delay:360ms}.login-features li:nth-child(3){animation-delay:420ms}
+
+/* ---------- Xuất hiện khi cuộn tới (motion.ts gắn .rv rồi .rv-in, kèm --rv-delay để so le) ---------- */
+.rv{opacity:0;transform:translateY(14px)}
+.rv.rv-in{opacity:1;transform:none;transition:opacity var(--dur-enter) var(--ease-out),transform var(--dur-enter) var(--ease-out);transition-delay:var(--rv-delay,0ms)}
+/* Sau khi xuất hiện xong thì gỡ transition-delay để hover phản hồi ngay */
+.rv.rv-done{transition-delay:0ms}
+
+/* ---------- Thanh trên cùng: đổ bóng nhẹ khi trang đã cuộn ---------- */
+.topbar{transition:box-shadow var(--dur) var(--ease-in-out),background-color var(--dur) var(--ease-in-out)}
+.topbar.scrolled{box-shadow:0 1px 0 var(--line),0 6px 16px -10px #0f172a40;background:#fffffff2}
+
+/* ---------- Menu bên: chỉ báo trang hiện tại "mọc" ra, nền đổi mượt ---------- */
+.nav-link{transition:background-color var(--dur-fast) ease,color var(--dur-fast) ease}
+.nav-link .glyph{transition:color var(--dur-fast) ease,transform var(--dur-fast) var(--ease-out)}
+.nav-link.active::before{transform-origin:center;animation:m-bar var(--dur) var(--ease-out) both}
+
+/* ---------- Nút ---------- */
+.button,.link-button,.chip,.seg a,.seg label,.icon-button,.status-tab,.view-switch a,.suggest-chip,.picker-trigger{
+  transition:background-color var(--dur-fast) ease,border-color var(--dur-fast) ease,color var(--dur-fast) ease,box-shadow var(--dur-fast) ease,transform var(--dur-fast) var(--ease-out),opacity var(--dur-fast) ease}
+.button:active:not(:disabled),.chip:active,.icon-button:active,.status-tab:active,.view-switch a:active{transform:scale(.97)}
+.button:disabled,.button[aria-disabled=true]{opacity:.6;cursor:not-allowed}
+.button:focus-visible,.link-button:focus-visible,.chip:focus-visible{outline:none;box-shadow:var(--ring)}
+/* Mũi tên trong nút/liên kết nhích theo hướng đi */
+.dash-more .glyph,.link-button .glyph,.module-go,.kpi-go,.button .glyph[class*=arrow]{transition:transform var(--dur-fast) var(--ease-out)}
+
+/* ---------- Ô nhập ---------- */
+.field input,.field select,.field textarea,.search-box input,.task-filters select,.search-input{transition:border-color var(--dur-fast) ease,box-shadow var(--dur-fast) ease,background-color var(--dur-fast) ease}
+.error-text:not([hidden]),.field-error:not(:empty),.error-summary{animation:m-pop var(--dur) var(--ease-out) both}
+
+/* ---------- Menu thả xuống, popover ---------- */
+.bell-menu[open]>.bell-dropdown,.user-menu[open]>.user-dropdown,.picker-pop,.combo-pop{transform-origin:top right;animation:m-pop var(--dur) var(--ease-out) both}
+.picker-pop,.combo-pop{transform-origin:top left}
+.bell-menu>summary,.user-menu>summary{transition:background-color var(--dur-fast) ease}
+.combo-opt,.picker-row,.picker-special,.menu-item,.noti{transition:background-color var(--dur-fast) ease}
+
+/* ---------- Hộp thoại: trồi lên + nền tối dần; đóng (motion.ts thêm .closing) thì lùi xuống ---------- */
+dialog[open]{animation:m-dialog var(--dur) var(--ease-out) both}
+dialog[open]::backdrop{animation:m-fade var(--dur) ease both}
+dialog.closing{animation:m-dialog-out 160ms var(--ease-in) both}
+dialog.closing::backdrop{animation:m-fade 160ms ease reverse both}
+
+/* ---------- Thông báo nhanh (toast) ---------- */
+.toast:not([hidden]){animation:m-toast-in var(--dur) var(--ease-out) both}
+.toast.leaving{animation:m-toast-out 200ms var(--ease-in) both}
+
+/* ---------- Tab: gạch chân trượt màu, nội dung tab mờ dần khi đổi ---------- */
+.tabs a{transition:color var(--dur-fast) ease,box-shadow var(--dur) var(--ease-in-out)}
+.tab-anim{animation:m-rise var(--dur) var(--ease-out) both}
+.seg a.on,.seg label.on,.view-switch a.on{transition:background-color var(--dur) var(--ease-in-out),box-shadow var(--dur) var(--ease-in-out),color var(--dur) ease}
+
+/* ---------- Thanh tiến độ: chạy tới giá trị thay vì nhảy ---------- */
+.bar>b,.workload-bar>i,.status-stack>i,.mp-bar>i{transition:width 700ms var(--ease-out)}
+
+/* ---------- Trạng thái đang tải: hiện trễ một chút để lần tải nhanh không bị nháy ---------- */
+.task-loading{animation:m-fade 300ms ease 150ms both}
+.task-loading .spinner{animation:spin .8s linear infinite}
+
+/* ---------- Hover (chỉ máy có chuột; màn cảm ứng không bị "dính" hiệu ứng) ---------- */
+@media (hover:hover) and (pointer:fine){
+  /* Thẻ bấm được: nâng nhẹ, bóng rõ hơn, viền đậm hơn */
+  .stat-tile,a.kpi,.module,.kanban-card,a.card,.me-tile,.mp-unit,.group-list a{transition:transform var(--dur-fast) var(--ease-out),box-shadow var(--dur) var(--ease-out),border-color var(--dur-fast) ease,background-color var(--dur-fast) ease}
+  .stat-tile:hover,a.kpi:hover,.kanban-card:hover,a.card:hover{transform:translateY(-2px);box-shadow:var(--lift);border-color:var(--line-strong)}
+  .module:hover{background:#fafbff}
+  .module:hover .module-go,.dash-more:hover .glyph,.link-button:hover .glyph,a.kpi:hover .kpi-go{transform:translateX(3px);color:var(--blue)}
+  .module:hover .module-ico{transform:translateY(-1px)}
+  .module-ico,.stat-ico,.dash-head-ico{transition:transform var(--dur-fast) var(--ease-out)}
+  .stat-tile:hover .stat-ico{transform:scale(1.06)}
+  /* Nút chính: sáng hơn + bóng nhẹ */
+  .button:not(.secondary):not(:disabled):hover{box-shadow:0 6px 16px -6px #2563eb80}
+  .button.secondary:not(:disabled):hover{box-shadow:inset 0 0 0 1px #b8c3d6,0 2px 6px -2px #0f172a1f}
+  /* Dòng danh sách: chỉ đổi nền, không di chuyển */
+  .task-row,.task-table tbody tr,.noti,.tl-row{transition:background-color var(--dur-fast) ease}
+  .task-table tbody tr:hover{background:#f8faff}
+  .nav-link:not(.active):hover .glyph{transform:translateX(1px);color:var(--blue)}
+  .avatar{transition:transform var(--dur-fast) var(--ease-out)}
+  .avatars .avatar:hover{transform:translateY(-2px);z-index:1}
+}
+
+/* ---------- Khung xương khi tải (dùng lớp .skeleton nếu có) ---------- */
+.skeleton{background:linear-gradient(90deg,var(--fill) 25%,#eef2f8 37%,var(--fill) 63%);background-size:400% 100%;animation:m-shimmer 1.4s ease infinite;border-radius:8px}
+
+/* ---------- Giảm chuyển động: tắt toàn bộ, nội dung hiện ngay ---------- */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important;transition-delay:0ms!important;scroll-behavior:auto!important}
+  .rv{opacity:1!important;transform:none!important}
+  .task-loading .spinner{animation:spin 1.6s linear infinite!important;animation-duration:1.6s!important;animation-iteration-count:infinite!important}
+}

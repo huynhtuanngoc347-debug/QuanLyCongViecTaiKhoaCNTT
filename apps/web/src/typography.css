@@ -1,0 +1,33 @@
+/* =========================================================
+   Chữ đậm hơn trên toàn bộ trang (nạp sau theme.css).
+   Font Inter có sẵn 400/500/600/700 (public/assets): nâng mỗi bậc lên một nấc
+   để chữ thường rõ hơn mà tiêu đề vẫn nổi bật so với nội dung.
+   ========================================================= */
+:root{
+  /* Chữ phụ sẫm hơn một chút: đọc rõ hơn trên nền trắng */
+  --muted:#556377;
+  --faint:#7d8ba1;
+}
+
+/* Chữ thường: 400 → 500 */
+body,input,select,textarea,button{font-weight:500}
+input::placeholder,textarea::placeholder{font-weight:400}
+
+/* Các chỗ đang ghi rõ 400/500 trong styles.css, theme.css → tăng một bậc */
+.nav-link{font-weight:500}
+.nav-link.active{font-weight:650}
+.unit-entry strong,.permission-table td:first-child,.info-list dd,.pending-note,.picker-name strong,.flow-step.empty strong{font-weight:600}
+.field .error-text,.custom-range .error-text,.toast{font-weight:600}
+.stat-body small,.view-switch a small,.me-unit>b small,.tag,.m-group-head span{font-weight:500}
+
+/* Nút, liên kết hành động, chip, tab: 600 → 650/700 */
+.button,.link-button{font-weight:650}
+.chip,.seg a,.seg label,.tabs a,.status-tab{font-weight:600}
+.chip.on,.seg a.on,.seg label.on,.tabs a.on{font-weight:700}
+
+/* Tiêu đề, chữ nhấn: đậm hẳn */
+h1,h2,h3,h4,strong,b,th{font-weight:700}
+.page-header h1,.detail-title h1,.portal-header h1,.admin-header h1,.due-head h2{font-weight:800}
+.st,.prio,.flag,.pill-alert,.badge,.unit-chip{font-weight:650}
+.muted,.small{font-weight:500}
+label,.field>label{font-weight:600}

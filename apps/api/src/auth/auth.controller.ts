@@ -10,8 +10,10 @@ import { initials, toStr } from '../common/text';
 import { loadRights } from '../tasks/task-access';
 import { capabilities, loadActiveUser, portals } from './access.service';
 import {
-  ACCESS_COOKIE, REFRESH_COOKIE, AuthUser, ClientIp, CurrentUser, Public, TokenPayload, checkLoginRate, clearAuthCookies,
+  ACCESS_COOKIE, REFRESH_COOKIE, AuthUser, ClientIp, CurrentUser, Public, TokenPayload, clearAuthCookies,
 } from './auth.guard';
+import { loginThrottle } from './login-throttle';
+import { isRevoked, isSessionId, newSessionId, revokeSession } from './session-revocation';
 import { DUMMY_HASH, fingerprint, hashPassword, validateNewPassword, verifyPassword } from './password-hasher';
 
 interface LoginRow { MaNguoiDung: number; HoTen: string; Email: string; MatKhauBam: string; TrangThaiTaiKhoan: boolean; }
@@ -48,10 +50,11 @@ export class AuthController {
     return String(req.headers['x-client'] ?? '').toLowerCase() === 'mobile';
   }
 
-  private async issue(req: Request, res: Response, userId: number, name: string, fp: string): Promise<TokenPairDto> {
+  /** sid: mã phiên — đăng nhập tạo mới, refresh / đổi mật khẩu giữ nguyên (xem session-revocation.ts). */
+  private async issue(req: Request, res: Response, userId: number, name: string, fp: string, sid: string): Promise<TokenPairDto> {
     const { accessTtlSeconds, refreshTtlSeconds } = appConfig.jwt;
-    const accessToken = await this.jwt.signAsync({ sub: userId, name, fp, typ: 'access' } satisfies TokenPayload, { expiresIn: accessTtlSeconds });
-    const refreshToken = await this.jwt.signAsync({ sub: userId, name, fp, typ: 'refresh' } satisfies TokenPayload, { expiresIn: refreshTtlSeconds });
+    const accessToken = await this.jwt.signAsync({ sub: userId, name, fp, typ: 'access', sid } satisfies TokenPayload, { expiresIn: accessTtlSeconds });
+    const refreshToken = await this.jwt.signAsync({ sub: userId, name, fp, typ: 'refresh', sid } satisfies TokenPayload, { expiresIn: refreshTtlSeconds });
     const secure = appConfig.cookies.secure === 'true' ? true : appConfig.cookies.secure === 'false' ? false : req.secure;
     const base = { httpOnly: true, sameSite: 'strict' as const, secure };
     res.cookie(ACCESS_COOKIE, accessToken, { ...base, path: '/', maxAge: accessTtlSeconds * 1000 });
@@ -63,13 +66,14 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   async login(@Body() body: Record<string, unknown>, @Req() req: Request, @Res({ passthrough: true }) res: Response, @ClientIp() ip: string | null): Promise<LoginResponseDto> {
-    checkLoginRate(ip);
     const email = (toStr(body?.email) ?? '').trim();
     const password = toStr(body?.password) ?? '';
     const errors: Record<string, string> = {};
     if (email.length === 0 || email.length > 254) errors.email = 'Nhập email đăng nhập.';
     if (password.length === 0 || password.length > 256) errors.password = 'Nhập mật khẩu.';
     if (Object.keys(errors).length) throw new FieldErrorsException(errors);
+    // Chỉ chặn khi đã nhập SAI nhiều lần (theo IP + email); đăng nhập đúng không bị tính.
+    loginThrottle.assertAllowed(ip, email);
 
     const outcome = await this.db.tx(null, async (db) => {
       // Cột Email dùng collation không phân biệt hoa/thường.
@@ -89,9 +93,13 @@ export class AuthController {
       return { id: user.MaNguoiDung, name: user.HoTen, fp: fingerprint(currentHash) };
     });
     // Không tiết lộ email có tồn tại hay tài khoản bị khóa.
-    if (!outcome) throw new ApiException(401, 'Email hoặc mật khẩu không đúng, hoặc tài khoản đang bị khóa.');
+    if (!outcome) {
+      loginThrottle.recordFailure(ip, email);
+      throw new ApiException(401, 'Email hoặc mật khẩu không đúng, hoặc tài khoản đang bị khóa.');
+    }
+    loginThrottle.recordSuccess(ip, email);
 
-    const tokens = await this.issue(req, res, outcome.id, outcome.name, outcome.fp);
+    const tokens = await this.issue(req, res, outcome.id, outcome.name, outcome.fp, newSessionId());
     const session = await this.db.read((db) => loadSession(db, outcome.id));
     if (!session) throw new ApiException(401, 'Tài khoản không còn hiệu lực.');
     return this.isMobile(req) ? { ...session, tokens } : session;
@@ -113,21 +121,36 @@ export class AuthController {
       throw new ApiException(401, 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
     }
     if (payload.typ !== 'refresh') throw new ApiException(401, 'Vui lòng đăng nhập.');
-    const account = await this.db.read((db) =>
-      db.one<{ HoTen: string; TrangThaiTaiKhoan: boolean; MatKhauBam: string }>('SELECT HoTen, TrangThaiTaiKhoan, MatKhauBam FROM dbo.NguoiDung WHERE MaNguoiDung = @id;', { id: payload.sub }),
-    );
-    if (!account || !account.TrangThaiTaiKhoan || fingerprint(account.MatKhauBam) !== payload.fp) {
+    const account = await this.db.read(async (db) => {
+      const row = await db.one<{ HoTen: string; TrangThaiTaiKhoan: boolean; MatKhauBam: string }>('SELECT HoTen, TrangThaiTaiKhoan, MatKhauBam FROM dbo.NguoiDung WHERE MaNguoiDung = @id;', { id: payload.sub });
+      return row && { ...row, revoked: await isRevoked(db, payload.sid) };
+    });
+    if (!account || !account.TrangThaiTaiKhoan || account.revoked || fingerprint(account.MatKhauBam) !== payload.fp) {
       clearAuthCookies(res);
       throw new ApiException(401, 'Phiên đăng nhập không còn hiệu lực. Hãy đăng nhập lại.');
     }
-    const tokens = await this.issue(req, res, payload.sub, account.HoTen, payload.fp);
+    const tokens = await this.issue(req, res, payload.sub, account.HoTen, payload.fp, isSessionId(payload.sid) ? payload.sid : newSessionId());
     return this.isMobile(req) ? { ok: true, tokens } : { ok: true };
   }
 
   @Post('logout')
   @HttpCode(204)
-  async logout(@CurrentUser() user: AuthUser, @Res({ passthrough: true }) res: Response, @ClientIp() ip: string | null): Promise<void> {
-    await this.db.tx(user.id, (db) => writeAudit(db, user.id, 'DangXuat', 'NguoiDung', String(user.id), null, null, ip));
+  async logout(@CurrentUser() user: AuthUser, @Body() body: Record<string, unknown>, @Req() req: Request, @Res({ passthrough: true }) res: Response, @ClientIp() ip: string | null): Promise<void> {
+    // Thu hồi phiên của access token; nếu refresh token gửi kèm thuộc phiên khác của chính người này thì thu hồi luôn.
+    const sids = new Set<string>();
+    if (user.sid) sids.add(user.sid);
+    const cookies = (req as Request & { cookies?: Record<string, string> }).cookies;
+    const refreshToken = toStr(body?.refreshToken) || cookies?.[REFRESH_COOKIE];
+    if (refreshToken) {
+      try {
+        const p = await this.jwt.verifyAsync<TokenPayload>(refreshToken);
+        if (p.typ === 'refresh' && p.sub === user.id && isSessionId(p.sid)) sids.add(p.sid);
+      } catch { /* token hết hạn / sai: không cần thu hồi */ }
+    }
+    await this.db.tx(user.id, async (db) => {
+      for (const sid of sids) await revokeSession(db, sid, user.id, appConfig.jwt.refreshTtlSeconds);
+      await writeAudit(db, user.id, 'DangXuat', 'NguoiDung', String(user.id), null, null, ip);
+    });
     clearAuthCookies(res);
   }
 
@@ -145,7 +168,8 @@ export class AuthController {
   @Post('doi-mat-khau')
   @HttpCode(204)
   async changePassword(@Body() body: Record<string, unknown>, @CurrentUser() user: AuthUser, @Req() req: Request, @Res({ passthrough: true }) res: Response, @ClientIp() ip: string | null): Promise<void> {
-    checkLoginRate(ip);
+    const throttleKey = `doi-mat-khau:${user.id}`;
+    loginThrottle.assertAllowed(ip, throttleKey);
     const current = toStr(body?.currentPassword) ?? '';
     const next = toStr(body?.newPassword) ?? '';
     const errors: Record<string, string> = {};
@@ -168,8 +192,12 @@ export class AuthController {
       return { status: 200 as const, name: row.HoTen };
     });
     if (result.status === 401) throw new ApiException(401, 'Phiên đăng nhập không còn hiệu lực.');
-    if (result.status === 400) throw new FieldErrorsException({ currentPassword: 'Mật khẩu hiện tại không đúng.' });
-    const tokens = await this.issue(req, res, user.id, result.name, fingerprint(newHash));
+    if (result.status === 400) {
+      loginThrottle.recordFailure(ip, throttleKey);
+      throw new FieldErrorsException({ currentPassword: 'Mật khẩu hiện tại không đúng.' });
+    }
+    loginThrottle.recordSuccess(ip, throttleKey);
+    const tokens = await this.issue(req, res, user.id, result.name, fingerprint(newHash), user.sid ?? newSessionId());
     if (this.isMobile(req)) {
       res.status(200);
       return { tokens } as unknown as void;

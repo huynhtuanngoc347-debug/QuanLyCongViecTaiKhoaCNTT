@@ -37,6 +37,8 @@ const PATHS = {
   reply: <><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 6 6v4" /></>,
   download: <><path d="M12 3v12M7 10l5 5 5-5" /><path d="M5 21h14" /></>,
   chevron: <path d="m9 6 6 6-6 6" />,
+  chevronDown: <path d="m6 9 6 6 6-6" />,
+  tick: <path d="M20 6 9 17l-5-5" />,
   logout: <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />,
   userPlus:<><circle cx="9" cy="8" r="4" /><path d="M2 21a7 7 0 0 1 14 0M19 8v6M16 11h6" /></>,
 } as const;

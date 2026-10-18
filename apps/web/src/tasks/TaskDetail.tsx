@@ -34,14 +34,17 @@ const CommentFiles = FileList;
 const Multiline = ({ text }: { text: string }) => (text ? <p className="prewrap">{text}</p> : <p className="muted">Chưa có.</p>);
 const Block = ({ title, children }: { title: string; children: React.ReactNode }) => <section className="card card-pad stack"><h3>{title}</h3>{children}</section>;
 
-export function Failed({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+/** page: lỗi thay cho cả trang → tiêu đề là h1 #page-title (trang luôn có một h1). */
+export function Failed({ error, onRetry, page }: { error: unknown; onRetry?: () => void; page?: boolean }) {
   const e = error as ApiError;
+  const H = page ? 'h1' : 'h2';
+  const hProps = page ? { id: 'page-title', tabIndex: -1 } : {};
   if (e?.status === 403 || e?.status === 404) {
-    return <div className="card card-pad stack"><h2>{e.status === 403 ? 'Không có quyền' : 'Không tìm thấy'}</h2><p className="muted">{e.message}</p><ButtonLink to="/cong-viec" kind="secondary">Về danh sách công việc</ButtonLink></div>;
+    return <div className="card card-pad stack"><H {...hProps}>{e.status === 403 ? 'Không có quyền' : 'Không tìm thấy'}</H><p className="muted">{e.message}</p><ButtonLink to="/cong-viec" kind="secondary">Về danh sách công việc</ButtonLink></div>;
   }
   // Lỗi nhập liệu (400): hiện đúng thông báo của trường lỗi thay cho câu chung "kiểm tra các trường được đánh dấu".
   const detail = e?.errors ? Object.values(e.errors)[0] : e?.message;
-  return <div className="card card-pad stack" role="alert"><h2>Không tải được dữ liệu</h2><p className="muted">{detail || 'Lỗi không xác định.'}</p>{onRetry ? <div className="actions"><button className="button secondary" onClick={onRetry}>Thử lại</button></div> : null}</div>;
+  return <div className="card card-pad stack" role="alert"><H {...hProps}>Không tải được dữ liệu</H><p className="muted">{detail || 'Lỗi không xác định.'}</p>{onRetry ? <div className="actions"><button className="button secondary" onClick={onRetry}>Thử lại</button></div> : null}</div>;
 }
 
 const HISTORY: Record<string, string> = { TaoCongViec: 'tạo công việc', GiaoViec: 'giao việc', TiepNhan: 'tiếp nhận', TuChoi: 'từ chối', PhanCongLai: 'phân công lại', CapNhatTienDo: 'cập nhật tiến độ', NopKetQua: 'nộp kết quả', DuyetKetQua: 'đánh giá kết quả', XinGiaHan: 'xin gia hạn', DuyetGiaHan: 'duyệt gia hạn', HuyPhanCong: 'hủy phân công', BinhLuan: 'bình luận', DoiTrangThai: 'đổi trạng thái', CapNhatCongViec: 'sửa công việc', GhiChu: 'ghi chú' };
@@ -320,8 +323,8 @@ export function TaskDetailPage() {
   const q = useTaskDetail(id);
   const actions = useTaskActions();
   useTitle(q.data?.summary.title ?? 'Chi tiết công việc');
-  if (!id) return <Failed error={{ status: 404, message: 'Thiếu mã công việc.' }} />;
-  if (!q.data && q.error) return <Failed error={q.error} onRetry={() => void q.refetch()} />;
+  if (!id) return <Failed page error={{ status: 404, message: 'Thiếu mã công việc.' }} />;
+  if (!q.data && q.error) return <Failed page error={q.error} onRetry={() => void q.refetch()} />;
   if (!q.data) return <Loading title="Đang tải công việc…" />;
   const d = q.data, t = d.summary, p = d.permissions;
   const tab = params.get('tab') || (t.assignedToMe ? 'assign' : 'overview');
@@ -364,7 +367,7 @@ export function TaskDetailPage() {
       <nav className="tabs" aria-label="Nội dung công việc">
         {tabs.map(([k, l]) => <Link key={k} to={hashOf('/cong-viec/chi-tiet', { id: t.id, tab: k })} className={tab === k ? 'on' : ''} aria-current={tab === k ? 'page' : undefined}>{l}</Link>)}
       </nav>
-      <div className="tab-body">
+      <div className="tab-body tab-anim" key={tab}>
         {tab === 'assign' ? <AssignTab d={d} /> : tab === 'result' ? <ResultTab d={d} /> : tab === 'discuss' ? <DiscussTab d={d} /> : tab === 'history' ? <HistoryTab d={d} /> : <OverviewTab d={d} />}
       </div>
     </>

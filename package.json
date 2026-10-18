@@ -18,7 +18,8 @@
     "typecheck": "npm run build -w @khoa/shared && npm run typecheck -w @khoa/api && npm run typecheck -w @khoa/web && npm run typecheck -w @khoa/mobile",
     "smoke": "node tools/smoke.mjs",
     "mock": "node tools/mock-api.mjs",
-    "dev:mobile": "npm run dev -w @khoa/mobile"
+    "dev:mobile": "npm run dev -w @khoa/mobile",
+    "regression": "node tools/regression.mjs"
   },
   "engines": {
     "node": ">=20"

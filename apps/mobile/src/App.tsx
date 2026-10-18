@@ -132,7 +132,7 @@ const router = createHashRouter([
           { path: 'create', element: <CreatePage /> },
           { path: 'notifications', element: <NotificationsPage /> },
           { path: 'profile', element: <ProfilePage /> },
-          { path: '*', element: <StateView kind="error" title="Không tìm thấy trang" text="Đường dẫn không đúng hoặc nội dung đã bị xóa." action={<Link to="/" className={`${button} mx-auto w-fit`}>Về trang chủ</Link>} /> },
+          { path: '*', element: <StateView kind="error" heading="h1" title="Không tìm thấy trang" text="Đường dẫn không đúng hoặc nội dung đã bị xóa." action={<Link to="/" className={`${button} mx-auto w-fit`}>Về trang chủ</Link>} /> },
         ],
       },
     ],

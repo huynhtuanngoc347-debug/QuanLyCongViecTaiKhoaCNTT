@@ -360,8 +360,13 @@ export async function history(db: SqlRunner, taskId: number): Promise<HistoryDto
      ORDER BY l.ThoiGian DESC, l.MaLichSu DESC;`,
     { taskId },
   );
+  // Cột MoTa ghi kèm tên người làm ("Nguyễn Hồng Vũ bình luận") để đọc thẳng trong CSDL vẫn hiểu; còn người làm
+  // đã có ở trường `by` nên bỏ tên ở đầu mô tả, tránh giao diện hiện lặp "Nguyễn Hồng Vũ Nguyễn Hồng Vũ bình luận".
+  // Không sửa dữ liệu cũ trong bảng: lịch sử là nhật ký chỉ ghi thêm.
+  const withoutActor = (text: string, name: string | null) =>
+    name && text.startsWith(name + ' ') ? text.slice(name.length + 1) : text;
   return rows.map((h) => ({
-    id: h.MaLichSu, type: h.LoaiHanhDong, description: h.MoTa ?? '', field: h.TruongThayDoi, oldValue: h.GiaTriCu, newValue: h.GiaTriMoi,
+    id: h.MaLichSu, type: h.LoaiHanhDong, description: withoutActor(h.MoTa ?? '', h.HoTen), field: h.TruongThayDoi, oldValue: h.GiaTriCu, newValue: h.GiaTriMoi,
     by: h.MaNguoiThucHien != null ? person(h.MaNguoiThucHien, h.HoTen ?? '?') : null, at: iso(h.ThoiGian)!,
   }));
 }

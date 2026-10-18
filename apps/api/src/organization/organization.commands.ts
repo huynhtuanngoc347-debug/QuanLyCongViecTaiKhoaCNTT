@@ -33,7 +33,7 @@ interface ParentRow { MaDonVi: number; TenDonVi: string; TrangThai: boolean; }
 
 async function checkExistingParent(db: SqlRunner, parentId: number | null, key: string, errors: Record<string, string>, whose: string): Promise<ParentRow | null> {
   if (parentId == null) {
-    errors[key] = `Chưa chọn đơn vị cha cho ${whose}. Chọn một đơn vị, “Không có đơn vị cha” hoặc “Tạo đơn vị cha mới”.`;
+    errors[key] = `Chưa chọn đơn vị cha cho ${whose}. Chọn một đơn vị trong khoa hoặc “Tạo đơn vị cha mới”.`;
     return null;
   }
   const parent = await db.one<ParentRow>('SELECT MaDonVi, TenDonVi, TrangThai FROM dbo.DonVi WITH (UPDLOCK, HOLDLOCK) WHERE MaDonVi = @parentId;', { parentId });
@@ -124,6 +124,17 @@ export class OrganizationCommands {
           }
           default:
             errors.parentId = 'Cách chọn đơn vị cha không hợp lệ. Tải lại trang rồi thử lại.';
+        }
+        // Hệ thống chỉ phục vụ một khoa: khi đã có đơn vị gốc (Khoa Công nghệ Thông tin) thì mọi đơn vị mới phải trực thuộc nó,
+        // và không tạo thêm đơn vị loại "Khoa". Chỉ cho tạo đơn vị gốc khi CSDL chưa có đơn vị nào (lần cài đặt đầu tiên).
+        const root = await db.one<{ MaDonVi: number; TenDonVi: string }>('SELECT TOP (1) MaDonVi, TenDonVi FROM dbo.DonVi WHERE MaDonViCha IS NULL ORDER BY MaDonVi;');
+        if (root) {
+          const rootRule = `Hệ thống chỉ phục vụ ${root.TenDonVi}: đơn vị mới phải trực thuộc khoa. Chọn đơn vị cha trong khoa.`;
+          if (mode === 'none') errors.parentId = rootRule;
+          if (mode === 'new' && newParent && newParentParentId == null && !errors.newParentParentId) errors.newParentParentId = rootRule;
+          const noFaculty = `Hệ thống chỉ có một khoa (${root.TenDonVi}). Chọn loại khác, ví dụ Bộ môn, Trung tâm, Nhóm.`;
+          if (!errors.type && unit.typeDb === 'Khoa') errors.type = noFaculty;
+          if (newParent && !errors.newParentType && newParent.typeDb === 'Khoa') errors.newParentType = noFaculty;
         }
         if (mode !== 'new' && !errors.name && !errors.parentId) await checkSiblingName(db, parentId, parentName, unit.name, 'name', errors);
         if (Object.keys(errors).length) return invalid(errors);

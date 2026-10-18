@@ -1,0 +1,41 @@
+Kiểm thử hồi quy tại http://localhost:5090
+
+BUG-P1-01 — chặn đăng nhập chỉ đếm lần nhập SAI
+  ✓ 12 lượt đăng nhập đúng liên tiếp đều thành công (12/12, lượt cuối 200)
+  ✓ 10 lần sai → 401, lần 11 → 429 (401,401,401,401,401,401,401,401,401,401,429)
+  ✓ Tài khoản khác cùng IP vẫn đăng nhập được sau khi một email bị khóa (200)
+
+BUG-P2-02 — chống nhúng trang (clickjacking)
+  ✓ /: X-Frame-Options=DENY, CSP=frame-ancestors 'none'
+  ✓ /m/: X-Frame-Options=DENY, CSP=frame-ancestors 'none'
+  ✓ /api/health: X-Frame-Options=DENY, CSP=frame-ancestors 'none'
+
+BUG-P3-01 — thân JSON quá lớn
+  ✓ Thân 3 MB → 413 {"message":"Dữ liệu gửi lên quá lớn (tối đa 2 MB)."}
+  ✓ JSON hỏng → 400
+
+BUG-P3-02 — phạm vi danh sách không hợp lệ
+  ✓ scope=hacker → 400
+  ✓ scope=all' OR 1=1-- → 400
+  ✓ scope=assigned vẫn hoạt động → 200
+  ✓ scope=created vẫn hoạt động → 200
+  ✓ scope=all vẫn hoạt động → 200
+  ✓ scope=review vẫn hoạt động → 200
+  ✓ Không truyền scope vẫn hoạt động → 200
+
+BUG-P3-03 — lựa chọn giao việc cho công việc ngoài quyền
+  ✓ Giảng viên, công việc 16 ngoài phạm vi → 404
+  ✓ Quản trị, công việc 2 → 200 (không ảnh hưởng người có quyền)
+  ✓ Không truyền taskId (dùng khi tạo việc) → 200
+  ✓ Công việc không tồn tại → 404
+
+BUG-P3-05 — limit nhật ký
+  ✓ limit=-5 trả số dòng mặc định (200) như không truyền (200)
+  ✓ limit=2 → 2 dòng
+
+Phân quyền không bị nới lỏng (đối chứng)
+  ✓ Giảng viên xem nhật ký → 403
+  ✓ Giảng viên tạo đơn vị → 403
+  ✓ Chưa đăng nhập → 401
+
+Kết quả: 24 đạt, 0 lỗi.

@@ -78,6 +78,13 @@ export class ApiExceptionFilter implements ExceptionFilter {
       } else {
         body = { message: raw || 'Không thực hiện được thao tác.' };
       }
+    } else if ((exception as { type?: string })?.type === 'entity.too.large') {
+      // Lỗi của body-parser (thân JSON vượt giới hạn 2 MB) không phải HttpException → trước đây rơi xuống 500.
+      status = 413;
+      body = { message: 'Dữ liệu gửi lên quá lớn (tối đa 2 MB).' };
+    } else if ((exception as { type?: string })?.type === 'entity.parse.failed') {
+      status = 400;
+      body = { message: 'Dữ liệu gửi lên không đúng định dạng.' };
     } else if ((exception as Error)?.name === 'ConnectionError') {
       status = 503;
       body = { message: 'Không kết nối được SQL Server. Kiểm tra SQL Server đang chạy và cấu hình DB_* trong apps/api/.env.' };

@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Post, Put, Query, Req, Res, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
+import { clampLimit, isTaskScope } from '../common/query-params';
 import * as path from 'node:path';
 import type { Request, Response } from 'express';
 import type {
@@ -74,6 +75,7 @@ export class TasksController {
   /** scope=assigned|created|all|review, status=1,2…, categoryId, priority, unitId, overdue, dueSoon, q */
   @Get('cong-viec')
   list(@CurrentUser() user: AuthUser, @Query() q: Record<string, string | undefined>): Promise<TaskListDto> {
+    if (q.scope !== undefined && !isTaskScope(q.scope)) throw new ApiException(400, 'Phạm vi danh sách không hợp lệ.', { scope: 'Chọn assigned, created, all hoặc review.' });
     const query: Q.ListQuery = {
       scope: q.scope ?? null,
       status: (q.status ?? '').split(',').map((x) => toInt(x)).filter((v): v is number => v != null && v >= 0),
@@ -85,9 +87,9 @@ export class TasksController {
 
   /** Người và đơn vị có thể nhận việc (kèm số việc đang mở của từng người). */
   @Get('cong-viec/lua-chon-giao-viec')
-  assignOptions(@CurrentUser() user: AuthUser, @Query('taskId') taskIdText?: string, @Query('assignmentId') assignmentIdText?: string): Promise<AssignOptionsDto> {
+  async assignOptions(@CurrentUser() user: AuthUser, @Query('taskId') taskIdText?: string, @Query('assignmentId') assignmentIdText?: string): Promise<AssignOptionsDto> {
     const taskId = toInt(taskIdText), assignmentId = toInt(assignmentIdText);
-    return this.withRights(user.id, async (db, r) => {
+    const options = await this.withRights<AssignOptionsDto | null>(user.id, async (db, r) => {
       if (assignmentId != null) {
         // Phân công lại: chỉ thành viên của đơn vị nhận.
         const unit = await db.scalar<number>('SELECT MaDonViNhan FROM dbo.PhanCong WHERE MaPhanCong = @aid;', { aid: assignmentId });
@@ -95,11 +97,15 @@ export class TasksController {
       }
       const scope = new Set(r.assignUnits);
       if (taskId != null) {
+        // Công việc không tồn tại hoặc người gọi không được xem → 404 (giống GET cong-viec/:id), không trả danh sách rỗng.
+        if (!(await Q.loadVisible(db, r, taskId)).tasks.length) return null;
         const creator = await db.scalar<number>('SELECT MaNguoiTao FROM dbo.CongViec WHERE MaCongViec = @tid;', { tid: taskId });
         if (creator === user.id) r.createUnits.forEach((u) => scope.add(u));
       } else r.createUnits.forEach((u) => scope.add(u));
       return Q.assignOptions(db, [...scope]);
     });
+    if (!options) throw new ApiException(404, 'Không tìm thấy công việc hoặc bạn không có quyền xem.');
+    return options;
   }
 
   @Get('cong-viec/:id')
@@ -358,7 +364,7 @@ export class TasksController {
     const rows = await this.db.read(async (db) => {
       const admin = await db.scalar<boolean>('SELECT LaQuanTriHeThong FROM dbo.NguoiDung WHERE MaNguoiDung = @userId AND TrangThaiTaiKhoan = 1;', { userId: user.id });
       if (admin !== true) return null;
-      const limit = Math.min(1000, Math.max(1, toInt(limitText) ?? 200));
+      const limit = clampLimit(limitText, 200, 1000);
       const q = search && search.trim() ? search.trim() : null;
       return db.query<{ id: number; action: string; objectType: string; objectId: string; actor: string; ip: string; at: Date }>(
         `SELECT TOP (@limit) nk.MaNhatKy AS id, nk.HanhDong AS action, ISNULL(nk.LoaiDoiTuong, N'') AS objectType,

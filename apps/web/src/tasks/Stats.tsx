@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import type { CountItemDto, MonthItemDto, PersonalStatsDto, UnitStatsDto } from '@khoa/shared';
+import type { CountItemDto, MonthItemDto, PersonStatDto, PersonalStatsDto, UnitStatsDto } from '@khoa/shared';
 import { get } from '../api/client';
 import { useSession } from '../session';
 import { useAccess } from '../nav';
 import { Avatar, Bar, ButtonLink, Empty, Kpi, Loading, Options, SegLinks } from '../ui/ui';
-import { fmtDay, ymdText } from '../format';
+import { fmtDay, normalize, ymdText } from '../format';
 import { useTitle } from '../pages/common';
 import { hashOf, useCategories } from './queries';
 import { periodOf } from './period';
@@ -101,6 +101,69 @@ function exportCsv(s: UnitStatsDto) {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 
+/** Bảng "Theo nhân sự": tìm một người cụ thể (tên, email, đơn vị), sắp xếp, mở thống kê chi tiết. */
+const PERSON_SORT: [string, string][] = [['name', 'Tên A–Z'], ['overdue', 'Quá hạn nhiều nhất'], ['assigned', 'Được giao nhiều nhất'], ['ontime', 'Đúng hạn thấp nhất']];
+function PersonStats({ people }: { people: PersonStatDto[] }) {
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const { org } = useSession();
+  const [search, setSearch] = useState(params.get('q') ?? '');
+  const sort = params.get('sort') ?? 'name';
+  const setParam = (k: string, v: string) => navigate(hashOf('/thong-ke', { ...Object.fromEntries(params.entries()), [k]: v }), { replace: true });
+  // Ghi từ khóa vào địa chỉ (sau 250 ms) để quay lại / gửi đường dẫn vẫn giữ kết quả lọc.
+  useEffect(() => {
+    if (search === (params.get('q') ?? '')) return;
+    const t = window.setTimeout(() => setParam('q', search), 250);
+    return () => window.clearTimeout(t);
+  }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
+  const email = (id: number) => org.people.find((p) => p.id === id)?.email ?? '';
+  const q = normalize(search);
+  const shown = people
+    .filter((x) => !q || normalize(`${x.name} ${email(x.personId)} ${x.unitName}`).includes(q))
+    .sort((a, b) => sort === 'overdue' ? b.overdue - a.overdue || a.name.localeCompare(b.name, 'vi')
+      : sort === 'assigned' ? b.assigned - a.assigned || a.name.localeCompare(b.name, 'vi')
+        : sort === 'ontime' ? (a.completed ? a.onTimePercent : 101) - (b.completed ? b.onTimePercent : 101) || a.name.localeCompare(b.name, 'vi')
+          : a.name.split(' ').slice(-1)[0].localeCompare(b.name.split(' ').slice(-1)[0], 'vi') || a.name.localeCompare(b.name, 'vi'));
+  const only = shown.length === 1 ? shown[0] : null;
+  const detail = (id: number) => hashOf('/thong-ke-ca-nhan', { person: id });
+  return (
+    <section className="card table-card" aria-labelledby="person-stats-title">
+      <div className="card-head person-stats-head">
+        <div><h3 id="person-stats-title">Theo nhân sự</h3><p className="muted small">Chỉ tính phân công cá nhân trong kỳ · bấm tên để xem thống kê của người đó</p></div>
+        <div className="person-stats-tools" role="search">
+          <label className="search-box"><span className="sr-only">Tìm nhân sự</span>
+            <input type="search" id="person-search" placeholder="Tìm theo tên, email hoặc đơn vị…" value={search} autoComplete="off"
+              onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && only) navigate(detail(only.personId)); }} />
+          </label>
+          <select aria-label="Sắp xếp nhân sự" value={sort} onChange={(e) => setParam('sort', e.target.value)}><Options items={PERSON_SORT} /></select>
+        </div>
+      </div>
+      {people.length ? (
+        <>
+          {q ? (
+            <div className="person-stats-result">
+              <span>{shown.length ? <>Tìm thấy <b>{shown.length}</b> / {people.length} người cho “{search.trim()}”</> : <>Không có ai khớp “{search.trim()}” trong {people.length} người được giao việc kỳ này.</>}</span>
+              {only ? <Link className="button small" to={detail(only.personId)}>Xem thống kê chi tiết của {only.name} ›</Link> : null}
+              <button type="button" className="link-button" onClick={() => setSearch('')}>Xóa tìm kiếm</button>
+            </div>
+          ) : null}
+          {shown.length ? (
+            <div className="table-wrap"><table className="m-cards"><thead><tr><th>Người thực hiện</th><th>Được giao</th><th>Hoàn thành</th><th>Đúng hạn</th><th>Quá hạn</th><th>Đánh giá Đạt</th></tr></thead><tbody>
+              {shown.map((x) => (
+                <tr key={x.personId} className={only ? 'row-picked' : ''}>
+                  <td><Link className="pick-who" to={detail(x.personId)}><Avatar initials={x.initials} tone={x.personId} /><span><strong>{x.name}</strong><small className="muted">{x.unitName}{email(x.personId) ? ` · ${email(x.personId)}` : ''}</small></span></Link></td>
+                  <td data-label="Được giao">{x.assigned}</td><td data-label="Hoàn thành">{x.completed}</td><td data-label="Đúng hạn">{x.completed ? <b className={x.onTimePercent >= 85 ? 'green' : 'orange'}>{x.onTimePercent}%</b> : '—'}</td>
+                  <td data-label="Quá hạn">{x.overdue ? <b className="red">{x.overdue}</b> : <span className="muted">0</span>}</td><td data-label="Đạt">{x.passed}</td>
+                </tr>
+              ))}
+            </tbody></table></div>
+          ) : null}
+        </>
+      ) : <Empty title="Chưa có phân công cá nhân" />}
+    </section>
+  );
+}
+
 export function UnitStatsPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -129,7 +192,8 @@ export function UnitStatsPage() {
         </div>
       </div>
       <div className="task-filters">
-        <PeriodBar path="/thong-ke" extra={{ unit, cat }} />
+        {/* Giữ cả từ khóa tìm nhân sự (q) và cách sắp xếp khi đổi kỳ thống kê (BUG-P3-06) */}
+        <PeriodBar path="/thong-ke" extra={{ unit, cat, q: params.get('q') ?? '', sort: params.get('sort') ?? '' }} />
         <select id="stat-unit" aria-label="Đơn vị" value={unit} onChange={(e) => setParam('unit', e.target.value)}><Options items={scopeUnits} placeholder="Mọi đơn vị trong phạm vi" /></select>
         <select id="stat-cat" aria-label="Thể loại" value={cat} onChange={(e) => setParam('cat', e.target.value)}><Options items={cats.map((c) => [c.id, c.name])} placeholder="Mọi thể loại" /></select>
       </div>
@@ -160,20 +224,7 @@ export function UnitStatsPage() {
               </tbody></table></div>
             ) : <Empty title="Chưa có dữ liệu" description="Kỳ này chưa có công việc." />}
           </section>
-          <section className="card table-card">
-            <div className="card-head"><h3>Theo nhân sự</h3><p className="muted small">Chỉ tính phân công cá nhân trong kỳ · bấm tên để xem thống kê của người đó</p></div>
-            {s.byPerson.length ? (
-              <div className="table-wrap"><table className="m-cards"><thead><tr><th>Người thực hiện</th><th>Được giao</th><th>Hoàn thành</th><th>Đúng hạn</th><th>Quá hạn</th><th>Đánh giá Đạt</th></tr></thead><tbody>
-                {s.byPerson.map((x) => (
-                  <tr key={x.personId}>
-                    <td><Link className="pick-who" to={hashOf('/thong-ke-ca-nhan', { person: x.personId })}><Avatar initials={x.initials} tone={x.personId} /><span><strong>{x.name}</strong><small className="muted">{x.unitName}</small></span></Link></td>
-                    <td data-label="Được giao">{x.assigned}</td><td data-label="Hoàn thành">{x.completed}</td><td data-label="Đúng hạn">{x.completed ? <b className={x.onTimePercent >= 85 ? 'green' : 'orange'}>{x.onTimePercent}%</b> : '—'}</td>
-                    <td data-label="Quá hạn">{x.overdue ? <b className="red">{x.overdue}</b> : <span className="muted">0</span>}</td><td data-label="Đạt">{x.passed}</td>
-                  </tr>
-                ))}
-              </tbody></table></div>
-            ) : <Empty title="Chưa có phân công cá nhân" />}
-          </section>
+          <PersonStats people={s.byPerson} />
         </>
       )}
     </>

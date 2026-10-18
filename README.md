@@ -23,7 +23,8 @@ khoa-cntt/
 - Node.js 20 trở lên (https://nodejs.org, bản LTS).
 - SQL Server 2019+ đã có CSDL `QLCongViecKhoaCNTT`. Nếu chưa, chạy lần lượt trong SSMS:
   `KhoaCNTT_chinhlan1.sql` → `DuLieuMau_KhoaCNTT.sql` → `sql/02_MoRong_LoaiDonVi.sql` → `sql/03_PhanHeCongViec.sql`
-  → `sql/04_XinTuChoi.sql` (xin từ chối việc đã tiếp nhận; chưa chạy thì nút "Xin từ chối" không hiện, phần khác vẫn chạy).
+  → `sql/04_XinTuChoi.sql` (xin từ chối việc đã tiếp nhận; chưa chạy thì nút "Xin từ chối" không hiện, phần khác vẫn chạy)
+  → `sql/05_ThuHoiPhien.sql` (đăng xuất thu hồi phiên phía máy chủ; chưa chạy thì đăng xuất chỉ xóa cookie như cũ).
   Các script 02–04 chạy lại nhiều lần vẫn an toàn và không xóa dữ liệu.
 
 ## 2. Cài đặt (lần đầu)

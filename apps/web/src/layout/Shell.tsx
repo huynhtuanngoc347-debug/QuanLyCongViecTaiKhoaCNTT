@@ -5,9 +5,10 @@ import type { DueAlertDto, NotificationDto } from '@khoa/shared';
 import { api, get } from '../api/client';
 import { useSession } from '../session';
 import { DESKTOP_ONLY, PORTAL_ICONS, TASK_LABELS, useAccess, type MenuItem } from '../nav';
-import { Icon, Loading, Modal, useUi } from '../ui/ui';
+import { Icon, Loading, useUi } from '../ui/ui';
 import { Glyph } from '../ui/glyph';
 import { useIsMobile } from '../ui/useIsMobile';
+import { closeDialog } from '../motion';
 import { useNotifications, useTaskList } from '../tasks/queries';
 import { DAY, fmtShort, pct, relative, todayIso, toDate } from '../format';
 
@@ -124,11 +125,20 @@ function UserMenu({ onLogout }: { onLogout: () => void }) {
 }
 
 // ---------------- Cảnh báo hạn sau đăng nhập ----------------
+/** Nhãn hạn: "Trễ 10 ngày" / "Còn 5 giờ" / "Còn 2 ngày". */
+function dueLabel(due: string, overdue: boolean): string {
+  const ms = toDate(due).getTime() - Date.now();
+  if (overdue || ms < 0) return `Trễ ${Math.max(1, Math.ceil(-ms / DAY))} ngày`;
+  return ms < DAY ? `Còn ${Math.max(1, Math.round(ms / 3600000))} giờ` : `Còn ${Math.ceil(ms / DAY)} ngày`;
+}
+
 function DueAlert() {
   const { session } = useSession();
   const navigate = useNavigate();
+  const ref = useRef<HTMLDialogElement>(null);
   const [data, setData] = useState<DueAlertDto | null>(null);
   const [mute, setMute] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'late' | 'soon'>('all');
   const key = `khoa.dueAlert.${session?.user.id}.${todayIso()}`;
   useEffect(() => {
     if (!session) return;
@@ -139,32 +149,70 @@ function DueAlert() {
       setData(d);
     }).catch(() => {});
   }, [session, key]);
+  useEffect(() => { const d = ref.current; if (data && d && !d.open) d.showModal(); }, [data]);
   if (!data) return null;
   const items = [...data.overdue, ...data.dueSoon];
-  const close = () => { if (mute) { try { localStorage.setItem(key, '1'); } catch { /* bỏ qua */ } } setData(null); };
-  const go = (to: string) => { close(); navigate(to); };
-  const sub = `${data.overdue.length ? `${data.overdue.length} việc đã quá hạn` : ''}${data.overdue.length && data.dueSoon.length ? ', ' : ''}${data.dueSoon.length ? `${data.dueSoon.length} việc sắp đến hạn trong 3 ngày tới` : ''}.`;
+  const shown = filter === 'late' ? data.overdue : filter === 'soon' ? data.dueSoon : items;
+  const close = (then?: () => void) => {
+    if (mute) { try { localStorage.setItem(key, '1'); } catch { /* bỏ qua */ } }
+    closeDialog(ref.current, () => { setData(null); then?.(); });
+  };
+  const go = (to: string) => close(() => navigate(to));
+  const today = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' });
+  const tabs: ['all' | 'late' | 'soon', string, number][] = [['all', 'Tất cả', items.length], ['late', 'Quá hạn', data.overdue.length], ['soon', 'Sắp đến hạn', data.dueSoon.length]];
   return (
-    <Modal title={`${items.length} công việc cần chú ý`} subtitle={sub} onClose={close}>
-      <div className="alert-list">
-        {items.map((x) => {
-          const ms = toDate(x.due).getTime() - Date.now();
-          const label = x.overdue ? `Quá hạn ${Math.max(1, Math.ceil(-ms / DAY))} ngày` : ms < DAY ? `Còn ${Math.max(1, Math.round(ms / 3600000))} giờ · ${fmtShort(x.due)}` : `Còn ${Math.ceil(ms / DAY)} ngày · ${fmtShort(x.due)}`;
+    <dialog ref={ref} className="due-alert" aria-labelledby="due-alert-title" aria-describedby="due-alert-sub" onCancel={(e) => { e.preventDefault(); close(); }}>
+      <header className="due-head">
+        <span className={`due-ico ${data.overdue.length ? 'late' : 'soon'}`} aria-hidden="true"><Glyph name={data.overdue.length ? 'alert' : 'clock'} size={22} /></span>
+        <div className="due-head-text">
+          <p className="due-eyebrow">{today.charAt(0).toUpperCase() + today.slice(1)}</p>
+          <h2 id="due-alert-title" tabIndex={-1} autoFocus>{items.length} công việc cần bạn chú ý</h2>
+          <p id="due-alert-sub" className="due-sub">
+            {data.overdue.length ? <span className="due-count late"><i />{data.overdue.length} đã quá hạn</span> : null}
+            {data.dueSoon.length ? <span className="due-count soon"><i />{data.dueSoon.length} đến hạn trong 3 ngày</span> : null}
+          </p>
+        </div>
+        <button type="button" className="due-close" aria-label="Đóng" onClick={() => close()}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+      </header>
+      {data.overdue.length && data.dueSoon.length ? (
+        <div className="due-tabs" role="tablist" aria-label="Lọc cảnh báo">
+          {tabs.map(([k, l, n]) => <button key={k} type="button" role="tab" aria-selected={filter === k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{l}<b>{n}</b></button>)}
+        </div>
+      ) : null}
+      <ul className="due-list">
+        {shown.map((x) => {
+          const late = x.overdue, p = pct(x.progress);
           return (
-            <a key={`${x.taskId}-${x.assignmentId ?? 'm'}`} className={`alert-row ${x.overdue ? 'late' : 'soon'}`} href={`#/cong-viec/chi-tiet?id=${x.taskId}`} onClick={(e) => { e.preventDefault(); go(`/cong-viec/chi-tiet?id=${x.taskId}`); }}>
-              <i aria-hidden="true" />
-              <span><strong>{x.title}</strong><small className="muted">{x.unitName} · tiến độ {pct(x.progress)}%{x.relation === 'manager' ? ' · việc bạn quản lý' : ''}</small></span>
-              <b>{label}</b>
-            </a>
+            <li key={`${x.taskId}-${x.assignmentId ?? 'm'}`}>
+              <a className={`due-item ${late ? 'late' : 'soon'}`} href={`#/cong-viec/chi-tiet?id=${x.taskId}`} onClick={(e) => { e.preventDefault(); go(`/cong-viec/chi-tiet?id=${x.taskId}`); }}>
+                <span className="due-item-main">
+                  <strong>{x.title}</strong>
+                  <span className="due-item-meta">
+                    <span>{x.unitName}</span>
+                    <span className={`due-tag ${x.relation}`}>{x.relation === 'manager' ? 'Việc bạn quản lý' : 'Việc của bạn'}</span>
+                  </span>
+                  <span className="due-progress" aria-label={`Tiến độ ${p}%`}><span className="due-track"><i style={{ width: `${Math.min(100, p)}%` }} /></span><small>{p}%</small></span>
+                </span>
+                <span className="due-when">
+                  <b>{dueLabel(x.due, late)}</b>
+                  <small>Hạn {fmtShort(x.due)}</small>
+                </span>
+                <Glyph name="chevron" size={16} className="due-go" />
+              </a>
+            </li>
           );
         })}
-      </div>
-      <label className="check"><input type="checkbox" id="mute-today" checked={mute} onChange={(e) => setMute(e.target.checked)} /> Không nhắc lại hôm nay</label>
-      <div className="actions form-actions">
-        <button type="button" className="button secondary" onClick={close}>Để sau</button>
-        <button type="button" className="button" onClick={() => go('/cong-viec?scope=assigned&soon=1')}>Xem tất cả công việc</button>
-      </div>
-    </Modal>
+      </ul>
+      <footer className="due-foot">
+        <label className="due-mute"><input type="checkbox" id="mute-today" checked={mute} onChange={(e) => setMute(e.target.checked)} /><span>Không nhắc lại hôm nay</span></label>
+        <div className="due-actions">
+          <button type="button" className="button secondary" onClick={() => close()}>Để sau</button>
+          <button type="button" className="button" onClick={() => go('/cong-viec?scope=assigned&soon=1')}>Xem tất cả<Glyph name="arrow" size={16} /></button>
+        </div>
+      </footer>
+    </dialog>
   );
 }
 
@@ -277,7 +325,9 @@ export function Shell() {
   const review = useTaskList('review', access.canReviewAny);
   useMobileTables();
   const mobile = useIsMobile();
-  useEffect(() => { setMenu(false); window.scrollTo(0, 0); }, [loc.pathname, loc.search]);
+  // Chỉ cuộn lên đầu khi sang trang khác; đổi bộ lọc/tìm kiếm (?q=…) giữ nguyên vị trí đang xem.
+  useEffect(() => { setMenu(false); }, [loc.pathname, loc.search]);
+  useEffect(() => { window.scrollTo(0, 0); }, [loc.pathname]);
 
   if (!s.session) return <Navigate to="/" replace />;
   const path = loc.pathname;

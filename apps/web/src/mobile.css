@@ -188,6 +188,8 @@
   .detail-title .actions .button{flex:1 1 auto;justify-content:center}
   .kv-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .kv{padding:10px 12px}
+  /* BUG-P2-01: chữ hạn (.due mặc định nowrap) phải xuống dòng trong ô 2 cột, không tràn ngang */
+  .kv .due,.kv dd{white-space:normal;overflow-wrap:anywhere}
   .tabs{flex-wrap:wrap;gap:0 18px;overflow:visible}
   .tabs a{transition:color .15s ease,box-shadow .2s ease}
 

@@ -1,0 +1,109 @@
+Kiểm tra API tại http://localhost:5090
+  ✓ GET /api/health → 200 {"database":"ok","customUnitTypes":true,"taskModule":true,"server":"nestjs"}
+  ✓ Đã chạy sql/03_PhanHeCongViec.sql (taskModule: true)
+
+Quản trị (admin.demo@example.invalid)
+  ✓ Đăng nhập → 200
+  ✓ Trang theo vai trò: admin
+  ✓ GET /api/auth/me → 200
+  ✓ GET /api/to-chuc → 200
+  ✓ GET /api/don-vi → 200
+  ✓ GET /api/nhan-su → 200
+  ✓ GET /api/chuc-vu → 200
+  ✓ GET /api/trang/admin → 200
+  ✓ GET /api/cong-viec?scope=assigned → 200
+  ✓ GET /api/cong-viec?scope=created → 200
+  ✓ GET /api/cong-viec?scope=all → 200
+  ✓ GET /api/cong-viec?scope=review → 200
+  ✓ GET /api/cong-viec/lua-chon-giao-viec → 200
+  ✓ GET /api/the-loai → 200
+  ✓ GET /api/mau-cong-viec → 200
+  ✓ GET /api/thong-bao?limit=30 → 200
+  ✓ GET /api/canh-bao-han → 200
+  ✓ GET /api/thong-ke/ca-nhan → 200
+  ✓ GET /api/thong-ke/don-vi → 200
+  ✓ GET /api/nhat-ky?limit=20 → 200
+  ✓ GET /api/cong-viec/2 → 200
+  ✓ GET /api/cong-viec/2/binh-luan → 200
+  ✓ GET /api/cong-viec/2/lich-su → 200
+  ✓ Trang không tồn tại → 404
+  ✓ Đăng xuất → 204
+
+Trưởng khoa (vunh@huit.edu.vn)
+  ✓ Đăng nhập → 200
+  ✓ Trang theo vai trò: ca-nhan
+  ✓ GET /api/auth/me → 200
+  ✓ GET /api/to-chuc → 200
+  ✓ GET /api/don-vi → 200
+  ✓ GET /api/nhan-su → 200
+  ✓ GET /api/chuc-vu → 200
+  ✓ GET /api/trang/ca-nhan → 200
+  ✓ GET /api/cong-viec?scope=assigned → 200
+  ✓ GET /api/cong-viec?scope=created → 200
+  ✓ GET /api/cong-viec?scope=all → 200
+  ✓ GET /api/cong-viec?scope=review → 200
+  ✓ GET /api/cong-viec/lua-chon-giao-viec → 200
+  ✓ GET /api/the-loai → 200
+  ✓ GET /api/mau-cong-viec → 200
+  ✓ GET /api/thong-bao?limit=30 → 200
+  ✓ GET /api/canh-bao-han → 200
+  ✓ GET /api/thong-ke/ca-nhan → 200
+  ✓ GET /api/thong-ke/don-vi → 200
+  ✓ GET /api/cong-viec/2 → 200
+  ✓ GET /api/cong-viec/2/binh-luan → 200
+  ✓ GET /api/cong-viec/2/lich-su → 200
+  ✓ Trang không tồn tại → 404
+  ✓ Đăng xuất → 204
+
+Trưởng bộ môn (baopt@huit.edu.vn)
+  ✓ Đăng nhập → 200
+  ✓ Trang theo vai trò: ca-nhan
+  ✓ GET /api/auth/me → 200
+  ✓ GET /api/to-chuc → 200
+  ✓ GET /api/don-vi → 200
+  ✓ GET /api/nhan-su → 200
+  ✓ GET /api/chuc-vu → 200
+  ✓ GET /api/trang/ca-nhan → 200
+  ✓ GET /api/cong-viec?scope=assigned → 200
+  ✓ GET /api/cong-viec?scope=created → 200
+  ✓ GET /api/cong-viec?scope=all → 200
+  ✓ GET /api/cong-viec?scope=review → 200
+  ✓ GET /api/cong-viec/lua-chon-giao-viec → 200
+  ✓ GET /api/the-loai → 200
+  ✓ GET /api/mau-cong-viec → 200
+  ✓ GET /api/thong-bao?limit=30 → 200
+  ✓ GET /api/canh-bao-han → 200
+  ✓ GET /api/thong-ke/ca-nhan → 200
+  ✓ GET /api/thong-ke/don-vi → 200
+  ✓ GET /api/cong-viec/2 → 200
+  ✓ GET /api/cong-viec/2/binh-luan → 200
+  ✓ GET /api/cong-viec/2/lich-su → 200
+  ✓ Trang không tồn tại → 404
+  ✓ Đăng xuất → 204
+
+Giảng viên (hand@huit.edu.vn)
+  ✓ Đăng nhập → 200
+  ✓ Trang theo vai trò: ca-nhan
+  ✓ GET /api/auth/me → 200
+  ✓ GET /api/to-chuc → 200
+  ✓ GET /api/don-vi → 200
+  ✓ GET /api/nhan-su → 200
+  ✓ GET /api/chuc-vu → 200
+  ✓ GET /api/trang/ca-nhan → 200
+  ✓ GET /api/cong-viec?scope=assigned → 200
+  ✓ GET /api/cong-viec?scope=created → 200
+  ✓ GET /api/cong-viec?scope=all → 200
+  ✓ GET /api/cong-viec?scope=review → 200
+  ✓ GET /api/cong-viec/lua-chon-giao-viec → 200
+  ✓ GET /api/the-loai → 200
+  ✓ GET /api/mau-cong-viec → 200
+  ✓ GET /api/thong-bao?limit=30 → 200
+  ✓ GET /api/canh-bao-han → 200
+  ✓ GET /api/thong-ke/ca-nhan → 200
+  ✓ GET /api/cong-viec/2 → 200
+  ✓ GET /api/cong-viec/2/binh-luan → 200
+  ✓ GET /api/cong-viec/2/lich-su → 200
+  ✓ Trang không tồn tại → 404
+  ✓ Đăng xuất → 204
+
+Kết quả: 98 đạt, 0 lỗi.

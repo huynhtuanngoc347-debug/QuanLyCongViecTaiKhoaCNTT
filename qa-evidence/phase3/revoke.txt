@@ -1,0 +1,9 @@
+PASS REV-01 Trước khi đăng xuất phiên dùng được; đăng xuất 204 — me=200 logout=204
+PASS REV-02 Sau đăng xuất: access token cũ và mới đều 401 — at-ban-đầu=401 at-sau-refresh=401
+PASS REV-03 Sau đăng xuất: refresh token hiện tại VÀ refresh token cũ (trước lần refresh) đều 401 — rt-cũ=401 rt-mới=401
+PASS REV-04 Phiên khác của cùng người dùng (máy khác) không bị ảnh hưởng — me=200 refresh=200
+PASS REV-05 App di động: đăng xuất thu hồi cả access token (Bearer) và refreshToken — me=200 logout=204 me-sau=401 refresh-sau=401
+PASS REV-06 Đăng nhập lại sau khi đăng xuất → phiên mới dùng được — login=200 me=200
+PASS REV-07 Gửi refresh token của người khác khi đăng xuất không thu hồi phiên của họ — logout=204 refresh-nạn-nhân=200
+
+Kết quả: 7 PASS, 0 FAIL.
