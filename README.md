@@ -12,7 +12,7 @@ và cá nhân; thông báo, nhắc hạn; nhật ký hệ thống. Trang theo va
 khoa-cntt/
   apps/api         NestJS 11 (Express) + TypeScript, thư viện mssql, SQL viết tay
   apps/web         React 19 + TypeScript, Vite, React Router (hash), TanStack Query
-  apps/mobile      App di động (React 19 + Tailwind CSS 4, theo bản thiết kế Figma Make), chạy tại /m/
+  apps/mobile      App di động cũ (React 19 + Tailwind CSS 4) — không còn phục vụ; điện thoại dùng bản web
   packages/shared  Kiểu dữ liệu (DTO) dùng chung cho API, web và app React Native sau này
   sql/             Script bổ sung CSDL (02, 03, 04)
   tools/           smoke.mjs (kiểm tra với CSDL thật), mock-api.mjs + e2e.mjs (kiểm thử giao diện)
@@ -51,20 +51,21 @@ npm run build
 npm start
 ```
 
-Mở http://localhost:5080 (bản máy tính) hoặc http://localhost:5080/m/ (app di động) — kiểm tra kết nối: http://localhost:5080/api/health (phải có `"taskModule": true`).
+Mở http://localhost:5080 (dùng chung cho máy tính và điện thoại) — kiểm tra kết nối: http://localhost:5080/api/health (phải có `"taskModule": true`).
 
 Khi phát triển (tự nạp lại khi sửa mã), mở 2 cửa sổ:
 
 ```powershell
 npm run dev:api     # API ở cổng 5080
 npm run dev:web     # giao diện ở http://localhost:5173 (chuyển tiếp /api sang 5080)
-npm run dev:mobile  # app di động ở http://localhost:5174/m/
+npm run dev:mobile  # (cũ) app di động riêng, không còn dùng — điện thoại dùng bản web
 ```
 
-**App di động** (`apps/mobile`): dùng chung API và phiên đăng nhập với bản máy tính. Trên điện thoại, mở
-`http://<IP máy chủ>:5080/m/` rồi chọn "Thêm vào màn hình chính" để dùng như ứng dụng. Gồm: trang chủ, danh sách và
-bộ lọc công việc, chi tiết (tiếp nhận/từ chối, cập nhật tiến độ, nộp kết quả kèm tệp, đánh giá, duyệt gia hạn/xin thôi,
-thảo luận), tạo và giao việc, thông báo, hồ sơ (đổi mật khẩu, chế độ tối). Phần quản trị chỉ có trên bản máy tính.
+**Trên điện thoại** dùng chính bản web (`http://<IP máy chủ>:5080`, có thể "Thêm vào màn hình chính"): giao diện tự
+chuyển sang khổ điện thoại (thanh trên: thông báo + tài khoản; thanh dưới: Trang chủ, Công việc, Tạo, Chờ duyệt/Lịch,
+Thống kê), cùng chức năng với bản máy tính — giao việc, tiếp nhận, tiến độ, nộp và duyệt kết quả, gia hạn, thảo luận.
+Điện thoại dành cho người giao việc và người nhận việc; tài khoản chỉ có vai trò quản trị phải dùng máy tính.
+Đường dẫn cũ `/m/...` của app di động trước đây tự chuyển sang trang tương ứng của bản web.
 
 Tài khoản thử (dữ liệu mẫu, mật khẩu chung `Demo@CNTT2026!`): `admin.demo@example.invalid` (quản trị),
 `vunh@huit.edu.vn` (trưởng khoa), `baopt@huit.edu.vn` (trưởng bộ môn), `hand@huit.edu.vn` (giảng viên).

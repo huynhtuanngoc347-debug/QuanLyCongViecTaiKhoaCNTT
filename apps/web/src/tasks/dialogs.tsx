@@ -126,6 +126,9 @@ function AssignDialog({ d, onClose, onDone }: { d: TaskDetailDto; onClose: () =>
   }
   const q = normalize(query);
   const people = opts.people.filter((p) => !q || normalize(`${p.name} ${p.unitName}`).includes(q));
+  // Nhắc người giao trước khi giao lại cho người đã từ chối chính việc này.
+  const declined = new Map<number, number>();
+  for (const a of d.assignments) if (a.status === 5 && a.personId != null) declined.set(a.personId, (declined.get(a.personId) ?? 0) + 1);
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const v = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>;
@@ -152,7 +155,7 @@ function AssignDialog({ d, onClose, onDone }: { d: TaskDetailDto; onClose: () =>
                 <label key={p.id} className="pick-item">
                   <input type="checkbox" name="personIds" value={p.id} checked={picked.has(p.id)} onChange={(e) => { const n = new Set(picked); if (e.target.checked) n.add(p.id); else n.delete(p.id); setPicked(n); setErrors(null); }} />
                   <Avatar initials={p.initials} tone={p.id} />
-                  <span><strong>{p.name}</strong><small className="muted">{p.unitName} · <span className={p.openTasks >= 5 ? 'warn-text' : ''}>{p.openTasks} việc đang mở{p.openTasks >= 5 ? ' · nhiều việc' : ''}</span></small></span>
+                  <span><strong>{p.name}</strong><small className="muted">{p.unitName} · <span className={p.openTasks >= 5 ? 'warn-text' : ''}>{p.openTasks} việc đang mở{p.openTasks >= 5 ? ' · nhiều việc' : ''}</span>{declined.get(p.id) ? <span className="warn-text"> · đã từ chối việc này {declined.get(p.id)} lần</span> : null}</small></span>
                 </label>
               )) : <p className="muted small">Không có người phù hợp.</p>}
             </div>
@@ -235,7 +238,7 @@ function DelegateDialog({ d, a, onClose, onDone, onReject }: { d: TaskDetailDto;
         </div>
         <Textarea name="note" label="Lời nhắn" rows={2} maxLength={2000} error={errors?.note} />
         <div className="actions form-actions spread">
-          {a.actions.canReject ? <button type="button" className="button secondary danger-text" onClick={onReject}>Từ chối nhận…</button> : <span />}
+          {a.actions.canReject ? <button type="button" className="button secondary danger-text" onClick={onReject}>Xin từ chối nhận…</button> : <span />}
           <span className="actions"><button type="button" className="button secondary" onClick={onClose}>Hủy</button><button className="button" type="submit" disabled={busy}>Tiếp nhận và giao</button></span>
         </div>
       </form>
@@ -424,12 +427,13 @@ function DecideDialog({ d, a, extensionId, onClose, onDone }: { d: TaskDetailDto
   );
 }
 
-// ---------------- Duyệt xin từ chối (việc đã tiếp nhận) ----------------
+// ---------------- Duyệt xin từ chối (nhận việc hoặc việc đã tiếp nhận) ----------------
 function DeclineDecideDialog({ d, a, declineId, onClose, onDone }: { d: TaskDetailDto; a: AssignmentDto; declineId?: number; onClose: () => void; onDone: DoneFn }) {
   const x = a.declines.find((e) => e.id === declineId) ?? a.declines.find((e) => e.status === 0);
   const [decision, setDecision] = useState('approve');
   const { errors, busy, run } = useSubmitter();
   if (!x) return null;
+  const waiting = a.status === 0;
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const comment = String(new FormData(e.currentTarget).get('comment') || '').trim();
@@ -437,16 +441,17 @@ function DeclineDecideDialog({ d, a, declineId, onClose, onDone }: { d: TaskDeta
       if (decision === 'reject' && !comment) return { comment: 'Nhập lý do không đồng ý để người nhận biết.' };
       const r = await send('POST', `/api/xin-tu-choi/${x.id}/duyet`, { decision, comment });
       if (r.errors) return r.errors;
-      onDone(decision === 'approve' ? `Đã đồng ý cho ${x.requestedBy.name} thôi nhận việc. Có thể giao cho người khác.` : 'Đã không đồng ý. Người nhận tiếp tục thực hiện.', d.summary.id);
+      onDone(decision === 'approve' ? `Đã đồng ý cho ${x.requestedBy.name} ${waiting ? 'từ chối nhận việc' : 'thôi nhận việc'}. Có thể giao cho người khác.` : `Đã không đồng ý. ${waiting ? 'Việc chuyển sang Đã tiếp nhận, ' : ''}người nhận tiếp tục thực hiện.`, d.summary.id);
     });
   };
   return (
-    <Modal title="Yêu cầu xin từ chối việc" subtitle={`${x.requestedBy.name} · gửi ${relative(x.createdAt)}`} onClose={onClose}>
+    <Modal title={waiting ? 'Yêu cầu từ chối nhận việc' : 'Yêu cầu xin từ chối việc'} subtitle={`${x.requestedBy.name} · gửi ${relative(x.createdAt)}`} onClose={onClose}>
       <form id="decline-decide-form" noValidate onSubmit={submit}>
         <ErrorSummary errors={errors} />
-        <div className="field"><label>Lý do</label><p className="prewrap">{x.reason}</p><small className="muted">Đã tiếp nhận {a.acceptedAt ? fmtShort(a.acceptedAt) : ''} · tiến độ {pct(a.progress)}% · hạn riêng {fmtDay(a.due)}</small></div>
-        <Field name="decision" label="Quyết định *"><Seg name="decision" items={[['approve', 'Đồng ý cho thôi'], ['reject', 'Không đồng ý']]} value={decision} onChange={setDecision} /></Field>
-        {decision === 'approve' ? <div className="notice">Phân công chuyển sang “Từ chối”. Tiến độ và lịch sử vẫn được giữ; bạn có thể giao việc cho người khác.</div> : null}
+        <div className="field"><label>Lý do</label><p className="prewrap">{x.reason}</p><small className="muted">{waiting ? `Chưa tiếp nhận · hạn riêng ${fmtDay(a.due)}` : `Đã tiếp nhận ${a.acceptedAt ? fmtShort(a.acceptedAt) : ''} · tiến độ ${pct(a.progress)}% · hạn riêng ${fmtDay(a.due)}`}</small></div>
+        <Field name="decision" label="Quyết định *"><Seg name="decision" items={[['approve', waiting ? 'Đồng ý cho từ chối' : 'Đồng ý cho thôi'], ['reject', 'Không đồng ý']]} value={decision} onChange={setDecision} /></Field>
+        {decision === 'approve' ? <div className="notice">Phân công chuyển sang “Từ chối”. Tiến độ và lịch sử vẫn được giữ; bạn có thể giao việc cho người khác.</div>
+          : waiting ? <div className="notice">Phân công chuyển sang “Đã tiếp nhận”; người nhận phải thực hiện và sẽ nhận được thông báo kèm lý do của bạn.</div> : null}
         <Textarea name="comment" label={decision === 'reject' ? 'Lý do không đồng ý *' : 'Nhận xét'} rows={2} maxLength={1000} placeholder={decision === 'reject' ? 'Ví dụ: việc gấp, chưa có người thay; hỗ trợ thêm phần …' : 'Không bắt buộc'} error={errors?.comment} />
         <Actions onClose={onClose} yes="Lưu quyết định" busy={busy} cancel="Để sau" />
       </form>
@@ -459,7 +464,8 @@ function ReasonDialog({ req, d, a, onClose, onDone }: { req: DialogRequest; d: T
   const { errors, busy, run } = useSubmitter();
   const s = req.status;
   const opts = req.kind === 'reject'
-    ? { title: 'Từ chối nhận việc', subtitle: a?.name ?? '', label: 'Lý do từ chối *', yes: 'Từ chối', danger: true, field: 'reason', required: true, message: 'Người giao sẽ nhận được lý do và có thể giao cho người khác.' }
+    ? { title: 'Xin từ chối nhận việc', subtitle: a?.name ?? '', label: 'Lý do từ chối *', yes: 'Gửi yêu cầu', danger: true, field: 'reason', required: true,
+        message: `${a?.assigner.name ?? 'Người giao'} cần đồng ý thì việc mới được trả lại. Nếu không được đồng ý, việc chuyển sang “Đã tiếp nhận” và bạn thực hiện như bình thường.` }
     : req.kind === 'decline-request'
     ? { title: 'Xin từ chối việc đã nhận', subtitle: d.summary.title, label: 'Lý do xin từ chối *', yes: 'Gửi yêu cầu', danger: true, field: 'reason', required: true, message: 'Bạn đã tiếp nhận việc này nên cần người giao đồng ý. Trong lúc chờ duyệt, bạn vẫn là người thực hiện.' }
     : req.kind === 'cancel-assignment'
@@ -479,7 +485,7 @@ function ReasonDialog({ req, d, a, onClose, onDone }: { req: DialogRequest; d: T
       const path = req.kind === 'reject' ? 'tu-choi' : req.kind === 'decline-request' ? 'xin-tu-choi' : 'huy';
       const r = await send('POST', `/api/phan-cong/${req.assignmentId}/${path}`, { reason: text });
       if (r.errors) return r.errors;
-      onDone(req.kind === 'reject' ? 'Đã từ chối nhận việc.' : req.kind === 'decline-request' ? 'Đã gửi yêu cầu xin từ chối. Người giao sẽ xem xét.' : 'Đã hủy phân công.', d.summary.id);
+      onDone(req.kind === 'reject' ? 'Đã gửi yêu cầu từ chối nhận việc. Chờ người giao duyệt.' : req.kind === 'decline-request' ? 'Đã gửi yêu cầu xin từ chối. Người giao sẽ xem xét.' : 'Đã hủy phân công.', d.summary.id);
     });
   };
   return (

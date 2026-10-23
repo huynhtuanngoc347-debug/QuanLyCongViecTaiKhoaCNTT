@@ -25,10 +25,10 @@ interface UnitLite { MaDonVi: number; MaDonViCha: number | null; TenDonVi: strin
 export function tryPeriod(fromText: string | null | undefined, toText: string | null | undefined): { from: Date; to: Date } | { error: string } {
   const today = todayLocal();
   const y = today.getUTCFullYear(), m = today.getUTCMonth() + 1;
-  // Mặc định: học kỳ hiện tại (HK I: 01/08–31/01, HK II: 01/02–31/07).
-  const semesterStart = m >= 8 ? new Date(Date.UTC(y, 7, 1)) : m === 1 ? new Date(Date.UTC(y - 1, 7, 1)) : new Date(Date.UTC(y, 1, 1));
-  const defaultFrom = formatDate(semesterStart);
-  const defaultTo = formatDate(new Date(addMonths(semesterStart, 6).getTime() - DAY_MS));
+  // Mặc định: năm học hiện tại (01/08 – 31/07).
+  const yearStart = new Date(Date.UTC(m >= 8 ? y : y - 1, 7, 1));
+  const defaultFrom = formatDate(yearStart);
+  const defaultTo = formatDate(new Date(addMonths(yearStart, 12).getTime() - DAY_MS));
   const from = parseVnDate(fromText && fromText.trim() ? fromText : defaultFrom, false);
   const to = parseVnDate(toText && toText.trim() ? toText : defaultTo, true);
   if (!from || !to) return { error: 'Ngày thống kê không hợp lệ.' };
@@ -70,11 +70,23 @@ function onTime(a: StatAssignmentRow): boolean {
   return a.TrangThaiPhanCong === P.AsDone && done != null && done <= a.HanHoanThanh;
 }
 
-/** 6 tháng kết thúc ở tháng chứa "to" (giờ Việt Nam). */
-function months(to: Date, assigned: Date[], completed: (Date | null)[]): MonthItemDto[] {
-  const local = toLocal(to);
-  const last = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), 1));
-  const keys = [0, 1, 2, 3, 4, 5].map((i) => addMonths(last, i - 5));
+/**
+ * Các tháng của biểu đồ "giao / hoàn thành theo tháng": từ tháng đầu kỳ tới tháng hiện tại
+ * (hoặc tháng cuối kỳ nếu kỳ đã qua), tối đa 12 tháng gần nhất. Cùng một kỳ luôn ra cùng các tháng,
+ * không còn hiện các tháng chưa tới (trước đây: 6 tháng tính lùi từ cuối kỳ).
+ */
+function monthRange(from: Date, to: Date, now: Date): { start: Date; end: Date; keys: Date[] } {
+  const end = to < now ? to : now < from ? from : now;
+  const monthOf = (d: Date) => { const l = toLocal(d); return new Date(Date.UTC(l.getUTCFullYear(), l.getUTCMonth(), 1)); };
+  const last = monthOf(end);
+  let first = monthOf(from);
+  if (first < addMonths(last, -11)) first = addMonths(last, -11);
+  const keys: Date[] = [];
+  for (let k = first; k <= last; k = addMonths(k, 1)) keys.push(k);
+  return { start: new Date(first.getTime() - OFFSET_MS), end, keys };
+}
+
+function months(keys: Date[], assigned: Date[], completed: (Date | null)[]): MonthItemDto[] {
   const key = (utc: Date) => toLocal(utc).toISOString().slice(0, 7);
   const count = (list: Date[]) => list.reduce((m, d) => m.set(key(d), (m.get(key(d)) ?? 0) + 1), new Map<string, number>());
   const a = count(assigned), c = count(completed.filter((d): d is Date => d != null));
@@ -82,11 +94,6 @@ function months(to: Date, assigned: Date[], completed: (Date | null)[]): MonthIt
     const month = k.toISOString().slice(0, 7);
     return { month, assigned: a.get(month) ?? 0, completed: c.get(month) ?? 0 };
   });
-}
-
-function monthWindow(to: Date): Date {
-  const local = toLocal(to);
-  return new Date(addMonths(new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), 1)), -5).getTime() - OFFSET_MS);
 }
 
 // ---------------- Thống kê đơn vị ----------------
@@ -136,17 +143,17 @@ export async function unitStats(db: SqlRunner, r: TaskRights, fromText: string |
        AND p.NgayGiao <= @to AND (p.NgayHoanThanh IS NULL OR p.NgayHoanThanh >= @from);`,
     { scope: scopeList, categoryId, from, to },
   );
+  const range = monthRange(from, to, now);
   const monthTasks = await db.query<{ NgayTao: Date; NgayHoanThanh: Date | null }>(
     `SELECT cv.NgayTao, cv.NgayHoanThanh FROM dbo.CongViec AS cv
      WHERE cv.TrangThai NOT IN (0, 6) AND cv.MaDonViQuanLy IN @scope AND (@categoryId IS NULL OR cv.MaTheLoai = @categoryId)
-       AND (cv.NgayTao >= DATEADD(MONTH, -7, @to) OR cv.NgayHoanThanh >= DATEADD(MONTH, -7, @to));`,
-    { scope: scopeList, categoryId, to },
+       AND (cv.NgayTao >= @mFrom OR cv.NgayHoanThanh >= @mFrom);`,
+    { scope: scopeList, categoryId, mFrom: range.start },
   );
-  const mFrom = monthWindow(to);
-  const inWindow = (d: Date | null) => d != null && d >= mFrom && d <= to;
+  const inWindow = (d: Date | null) => d != null && d >= range.start && d <= range.end;
   // NgayHoanThanh có thể nằm ở tương lai (CSDL buộc >= NgayBatDau khi đóng việc trước ngày bắt đầu): tính là hôm nay.
   const doneAt = (d: Date | null) => (d && d > now ? now : d);
-  const byMonth = months(to, monthTasks.map((x) => x.NgayTao).filter(inWindow), monthTasks.map((x) => doneAt(x.NgayHoanThanh)).filter(inWindow));
+  const byMonth = months(range.keys, monthTasks.map((x) => x.NgayTao).filter(inWindow), monthTasks.map((x) => doneAt(x.NgayHoanThanh)).filter(inWindow));
 
   const byStatus: CountItemDto[] = [
     { key: 'done', label: 'Hoàn thành', value: completed },
@@ -171,12 +178,34 @@ export async function unitStats(db: SqlRunner, r: TaskRights, fromText: string |
   const byPerson: PersonStatDto[] = [...byPersonMap.entries()].map(([pid, g]) => {
     const done = g.filter((a) => a.TrangThaiPhanCong === P.AsDone).length;
     const name = g[0].HoTen ?? '';
+    const onTimeDone = g.filter(onTime).length;
     return {
       personId: pid, name, initials: initials(name), unitName: primaryUnits.get(pid) ?? '', assigned: g.length, completed: done,
-      onTimePercent: percent(g.filter(onTime).length, done), overdue: g.filter((a) => P.isOpenStatus(a.TrangThaiPhanCong) && a.HanHoanThanh < now).length,
+      onTimePercent: percent(onTimeDone, done), overdue: g.filter((a) => P.isOpenStatus(a.TrangThaiPhanCong) && a.HanHoanThanh < now).length,
       passed: g.reduce((s, a) => s + a.SoDat, 0),
+      lead: g.filter((a) => a.VaiTro === 1).length, support: g.filter((a) => a.VaiTro === 2).length,
+      inProgress: g.filter((a) => a.TrangThaiPhanCong === P.AsWaiting || a.TrangThaiPhanCong === P.AsAccepted || a.TrangThaiPhanCong === P.AsWorking).length,
+      waitingReview: g.filter((a) => a.TrangThaiPhanCong === P.AsReview).length, late: done - onTimeDone,
+      needsWork: g.reduce((s, a) => s + a.SoCanBoSung, 0), failed: g.reduce((s, a) => s + a.SoKhongDat, 0),
     };
-  }).sort((a, b) => b.assigned - a.assigned || a.name.localeCompare(b.name, 'vi'));
+  });
+  // Thành viên đang hoạt động của các đơn vị trong phạm vi nhưng chưa có phân công cá nhân trong kỳ: vẫn liệt kê (số 0)
+  // để thống kê đủ từng giảng viên, không chỉ người đang có việc.
+  const idle = await db.query<{ MaNguoiDung: number; HoTen: string }>(
+    `SELECT DISTINCT n.MaNguoiDung, n.HoTen
+     FROM dbo.ThanhVienDonVi AS tv JOIN dbo.NguoiDung AS n ON n.MaNguoiDung = tv.MaNguoiDung
+     WHERE tv.MaDonVi IN @scope AND tv.TrangThai = 1 AND (tv.NgayKetThuc IS NULL OR tv.NgayKetThuc >= CAST(SYSUTCDATETIME() AS DATE))
+       AND n.TrangThaiTaiKhoan = 1;`,
+    { scope: scopeList },
+  );
+  for (const p of idle) {
+    if (byPersonMap.has(p.MaNguoiDung)) continue;
+    byPerson.push({
+      personId: p.MaNguoiDung, name: p.HoTen, initials: initials(p.HoTen), unitName: primaryUnits.get(p.MaNguoiDung) ?? '', assigned: 0, completed: 0,
+      onTimePercent: 0, overdue: 0, passed: 0, lead: 0, support: 0, inProgress: 0, waitingReview: 0, late: 0, needsWork: 0, failed: 0,
+    });
+  }
+  byPerson.sort((a, b) => b.assigned - a.assigned || a.name.localeCompare(b.name, 'vi'));
 
   return ok({
     from: localDate(from), to: localDate(to), scopeLabel: label, total: tasks.length, open: tasks.length - completed, completed,
@@ -225,15 +254,15 @@ export async function personalStats(db: SqlRunner, r: TaskRights, personId: numb
      FROM dbo.YeuCauGiaHan WHERE MaNguoiYeuCau = @personId AND NgayTao BETWEEN @from AND @to;`,
     { personId, from, to },
   ))!;
+  const monthsRange = monthRange(from, to, now);
   const monthRows = await db.query<{ NgayGiao: Date; NgayHoanThanh: Date | null }>(
     `SELECT p.NgayGiao, p.NgayHoanThanh FROM dbo.PhanCong AS p JOIN dbo.CongViec AS c ON c.MaCongViec = p.MaCongViec
      WHERE p.MaNguoiNhan = @personId AND p.TrangThaiPhanCong NOT IN (5, 6) AND c.TrangThai NOT IN (0, 6)
-       AND (p.NgayGiao >= DATEADD(MONTH, -7, @to) OR p.NgayHoanThanh >= DATEADD(MONTH, -7, @to));`,
-    { personId, to },
+       AND (p.NgayGiao >= @mFrom OR p.NgayHoanThanh >= @mFrom);`,
+    { personId, mFrom: monthsRange.start },
   );
-  const mFrom = monthWindow(to);
-  const inWindow = (d: Date | null) => d != null && d >= mFrom && d <= to;
-  const byMonth = months(to, monthRows.map((x) => x.NgayGiao).filter(inWindow), monthRows.map((x) => (x.NgayHoanThanh && x.NgayHoanThanh > now ? now : x.NgayHoanThanh)).filter(inWindow));
+  const inWindow = (d: Date | null) => d != null && d >= monthsRange.start && d <= monthsRange.end;
+  const byMonth = months(monthsRange.keys, monthRows.map((x) => x.NgayGiao).filter(inWindow), monthRows.map((x) => (x.NgayHoanThanh && x.NgayHoanThanh > now ? now : x.NgayHoanThanh)).filter(inWindow));
   const catMap = new Map<string, number>();
   for (const a of mine) {
     const k = a.TenTheLoai && a.TenTheLoai.trim() ? a.TenTheLoai : 'Chưa phân loại';

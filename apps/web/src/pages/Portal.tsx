@@ -15,10 +15,10 @@ import { normalize, todayIso, ymdText } from '../format';
 import { useTitle } from './common';
 
 // ---------------- Cột phải trang cá nhân: "Kết quả của tôi" ----------------
-const PERIOD_ITEMS: ['month' | 'semester' | 'year', string][] = [['month', 'Tháng'], ['semester', 'Học kỳ'], ['year', 'Năm học']];
+const PERIOD_ITEMS: ['month' | 'year', string][] = [['month', 'Tháng'], ['year', 'Năm học']];
 
 function MyResultsCard() {
-  const [preset, setPreset] = useState<'month' | 'semester' | 'year'>('semester');
+  const [preset, setPreset] = useState<'month' | 'year'>('year');
   const p = periodOf(new URLSearchParams({ period: preset }));
   const [from, to] = [p.presets[preset][0], p.presets[preset][1]];
   const q = useQuery({ queryKey: ['stats', 'me', '', from, to], queryFn: () => get<PersonalStatsDto>(`/api/thong-ke/ca-nhan?from=${from}&to=${to}`), staleTime: 30_000 });
@@ -103,6 +103,18 @@ function MyUnitsCard() {
 }
 
 // ---------------- Trang theo vai trò ----------------
+/** Phạm vi nhiều đơn vị: hiện 2 đơn vị đầu, phần còn lại mở bằng "+N đơn vị" (vẫn xem được đủ). */
+function ScopeText({ text }: { text: string }) {
+  const units = text.split(', ').filter(Boolean);
+  if (units.length <= 2) return <span id="portal-scope">{text}</span>;
+  return (
+    <span id="portal-scope" className="portal-scope">
+      {units.slice(0, 2).join(', ')}
+      <details className="scope-more"><summary>+{units.length - 2} đơn vị</summary><span>{units.slice(2).join(', ')}</span></details>
+    </span>
+  );
+}
+
 export function PortalPage() {
   const s = useSession();
   const access = useAccess();
@@ -139,23 +151,25 @@ export function PortalPage() {
   const header = (
     <header className={`portal-header portal-${key}`} id="portal-header">
       <div className="portal-text">
-        <p className="portal-eyebrow">{portal.title} · {today.charAt(0).toUpperCase() + today.slice(1)}</p>
-        <h1 tabIndex={-1} id="page-title">Xin chào, {s.session.user.name}</h1>
-        <p className="portal-role"><span className="portal-badge">{portal.roleLabel}</span><span id="portal-scope">{scope ?? portal.scope}</span></p>
+        <h1 tabIndex={-1} id="page-title">{portal.title}</h1>
+        <p className="portal-eyebrow">{s.session.user.name} · {today.charAt(0).toUpperCase() + today.slice(1)}</p>
+        <p className="portal-role"><span className="portal-badge">{portal.roleLabel}</span><ScopeText text={scope ?? portal.scope} /></p>
       </div>
       <div className="portal-actions">
-        {access.canCreate ? <Link className="button" to="/cong-viec/tao"><Glyph name="plus" size={16} />Tạo công việc</Link> : null}
-        {access.canAssignAny ? <Link className="button secondary" to="/cong-viec?scope=created"><Glyph name="assign" size={16} />Giao việc</Link> : null}
+        {/* Tạo / giao việc là việc nhập liệu dài: bản điện thoại (chỉ để xem, theo dõi) không đặt ở trang chủ. */}
+        {access.canCreate ? <Link className="button m-hide" to="/cong-viec/tao"><Glyph name="plus" size={16} />Tạo công việc</Link> : null}
+        {access.canAssignAny ? <Link className="button secondary m-hide" to="/cong-viec?scope=created"><Glyph name="assign" size={16} />Giao việc</Link> : null}
         {access.canReviewAny ? <Link className="button secondary" to="/cho-duyet"><Glyph name="review" size={16} />Chờ duyệt{review ? <span className="btn-count">{review}</span> : null}</Link> : null}
-        {access.caps.isMember ? <Link className={`button ${access.canCreate ? 'secondary' : ''}`} to="/cong-viec?scope=assigned"><Glyph name="progress" size={16} />Cập nhật tiến độ</Link> : null}
+        {/* Điện thoại: trùng tab "Công việc" ở thanh dưới. */}
+        {access.caps.isMember ? <Link className={`button m-hide ${access.canCreate ? 'secondary' : ''}`} to="/cong-viec?scope=assigned"><Glyph name="progress" size={16} />Cập nhật tiến độ</Link> : null}
       </div>
     </header>
   );
   const myResults = access.caps.isMember ? <div className="dash-grid two top"><MyResultsCard /><MyUnitsCard /></div> : undefined;
   const switcher = personal && manages && access.caps.isMember ? (
     <nav className="view-switch" aria-label="Góc nhìn">
-      <Link to="/ca-nhan" className={view === 'quan-ly' ? 'on' : ''} aria-current={view === 'quan-ly' ? 'page' : undefined}><Glyph name="building" size={16} />Việc tôi quản lý<small>đơn vị, phân công, đánh giá</small></Link>
-      <Link to="/ca-nhan?view=cua-toi" className={view === 'cua-toi' ? 'on' : ''} aria-current={view === 'cua-toi' ? 'page' : undefined}><Glyph name="user" size={16} />Việc của tôi<small>việc được giao, kết quả cá nhân</small></Link>
+      <Link to="/ca-nhan" className={view === 'quan-ly' ? 'on' : ''} aria-current={view === 'quan-ly' ? 'page' : undefined}><Glyph name="building" size={16} />Việc tôi quản lý</Link>
+      <Link to="/ca-nhan?view=cua-toi" className={view === 'cua-toi' ? 'on' : ''} aria-current={view === 'cua-toi' ? 'page' : undefined}><Glyph name="user" size={16} />Việc của tôi</Link>
     </nav>
   ) : null;
   return <>{header}{switcher}<Dashboard key={view} mode={view === 'cua-toi' ? 'member' : 'manager'} evaluation={myResults} /></>;

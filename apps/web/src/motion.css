@@ -53,7 +53,7 @@
   transition:background-color var(--dur-fast) ease,border-color var(--dur-fast) ease,color var(--dur-fast) ease,box-shadow var(--dur-fast) ease,transform var(--dur-fast) var(--ease-out),opacity var(--dur-fast) ease}
 .button:active:not(:disabled),.chip:active,.icon-button:active,.status-tab:active,.view-switch a:active{transform:scale(.97)}
 .button:disabled,.button[aria-disabled=true]{opacity:.6;cursor:not-allowed}
-.button:focus-visible,.link-button:focus-visible,.chip:focus-visible{outline:none;box-shadow:var(--ring)}
+.button:focus-visible,.link-button:focus-visible,.chip:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 /* Mũi tên trong nút/liên kết nhích theo hướng đi */
 .dash-more .glyph,.link-button .glyph,.module-go,.kpi-go,.button .glyph[class*=arrow]{transition:transform var(--dur-fast) var(--ease-out)}
 
@@ -119,3 +119,7 @@ dialog.closing::backdrop{animation:m-fade 160ms ease reverse both}
   .rv{opacity:1!important;transform:none!important}
   .task-loading .spinner{animation:spin 1.6s linear infinite!important;animation-duration:1.6s!important;animation-iteration-count:infinite!important}
 }
+
+/* Viền focus bằng outline: styles.css gốc vẽ focus bằng box-shadow, nhiều thành phần lại đặt box-shadow:none nên mất focus.
+   outline không bị các quy tắc đó đè (ui-ux-pro-max: focus-states). */
+:is(a[href],button,summary,[role=button],[role=tab],input[type=checkbox],input[type=radio]):focus-visible{outline:2px solid var(--blue);outline-offset:2px}

@@ -52,6 +52,23 @@ export const appConfig = {
   webDist: path.resolve(apiRoot, env('WEB_DIST', '../web/dist')),
   mobileDist: path.resolve(apiRoot, env('MOBILE_DIST', '../mobile/dist')),
   uploadsPath: path.resolve(apiRoot, env('UPLOADS_PATH', 'App_Data/uploads')),
+  /** Kho tệp chuẩn S3 (Backblaze B2, Cloudflare R2…). Bỏ trống S3_BUCKET = chỉ lưu trên đĩa. */
+  s3: {
+    bucket: env('S3_BUCKET'),
+    endpoint: env('S3_ENDPOINT'),
+    region: env('S3_REGION', 'auto'),
+    accessKeyId: env('S3_ACCESS_KEY_ID'),
+    secretAccessKey: env('S3_SECRET_ACCESS_KEY'),
+  },
+  /** Gửi email (quên mật khẩu). Bỏ trống SMTP_HOST: không gửi, mã chỉ in ra cửa sổ chạy API (khi không phải production). */
+  smtp: {
+    host: env('SMTP_HOST'),
+    port: Number(env('SMTP_PORT', '465')) || 465,
+    user: env('SMTP_USER'),
+    // Google hiển thị mật khẩu ứng dụng thành 4 nhóm cách nhau: bỏ khoảng trắng
+    pass: env('SMTP_PASS').replace(/\s+/g, ''),
+    from: env('MAIL_FROM') || env('SMTP_USER'),
+  },
   /** Tác vụ nền nhắc hạn + lặp lại (phút). 0 = tắt. */
   reminderIntervalMinutes: Number(env('REMINDER_INTERVAL_MINUTES', '60')),
 };

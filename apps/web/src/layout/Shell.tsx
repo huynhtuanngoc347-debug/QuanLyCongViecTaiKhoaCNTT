@@ -250,27 +250,81 @@ function activeMenuPath(path: string): string {
   return path;
 }
 
-/** Thanh điều hướng dưới cùng trên điện thoại (CSS chỉ hiện khi màn hình ≤ 720px). */
-function MobileTabBar({ path, home, canCreate, taskBadge }: { path: string; home: string; canCreate: boolean; taskBadge: number }) {
-  const { session } = useSession();
+/** Trang mở từ ô "Thêm" của thanh dưới (để đánh dấu ô Thêm đang chọn). */
+const MORE_PATHS = ['/thong-ke', '/thong-ke-ca-nhan', '/to-chuc', '/nhan-su', '/ho-so', '/doi-mat-khau'];
+
+/**
+ * Thanh điều hướng dưới trên điện thoại (CSS chỉ hiện khi màn hình ≤ 720px). Bản điện thoại dùng để xem và theo dõi:
+ * Trang chủ · Công việc · [Chờ duyệt] · Thông báo · Thêm. Tạo / giao việc không đặt ở đây (làm trên máy tính).
+ */
+function MobileTabBar({ path, home, access, reviewBadge, onMore }: {
+  path: string; home: string; access: ReturnType<typeof useAccess>; reviewBadge: number; onMore: () => void;
+}) {
   const unread = useNotifications().data?.unread ?? 0;
-  const search = new URLSearchParams(useLocation().search);
-  const me = session ? `/ho-so?id=${session.user.id}` : '/doi-mat-khau';
-  const tab = (to: string, on: boolean, label: string, icon: React.ReactNode, badge = 0) => (
-    <Link to={to} className={on ? 'on' : ''} aria-current={on ? 'page' : undefined}>
-      <span className="m-tab-ico">{icon}{badge ? <b className="m-tab-badge">{badge > 99 ? '99+' : badge}</b> : null}</span>
+  const tab = (to: string, on: boolean, label: string, icon: React.ReactNode, badge = 0, badgeLabel = '') => (
+    <Link to={to} className={on ? 'on' : ''} aria-current={on ? 'page' : undefined} aria-label={badge ? `${label}, ${badge} ${badgeLabel}` : undefined}>
+      <span className="m-tab-ico">{icon}{badge ? <b className="m-tab-badge" aria-hidden="true">{badge > 99 ? '99+' : badge}</b> : null}</span>
       <span>{label}</span>
     </Link>
   );
-  const taskOn = path.startsWith('/cong-viec') && path !== '/cong-viec/tao' || path === '/cho-duyet';
+  // Lịch là một kiểu xem của trang Công việc (nút "Danh sách | Lịch"), nên vẫn sáng ô Công việc.
+  const taskOn = path.startsWith('/cong-viec') || (!access.canReviewAny && path === '/cho-duyet');
+  const moreOn = MORE_PATHS.includes(path);
+  const items = [
+    // Không có trang cá nhân (quản trị) thì trang chủ chính là Công việc: không lặp hai ô.
+    home !== '/cong-viec' ? tab(home, path === home, 'Trang chủ', <Glyph name="dashboard" size={22} />) : null,
+    tab('/cong-viec', taskOn, 'Công việc', <Glyph name="tasks" size={22} />),
+    access.canReviewAny ? tab('/cho-duyet', path === '/cho-duyet', 'Chờ duyệt', <Glyph name="review" size={22} />, reviewBadge, 'việc chờ duyệt') : null,
+    tab('/thong-bao', path === '/thong-bao', 'Thông báo', <Glyph name="bell" size={22} />, unread, 'chưa đọc'),
+    <button type="button" className={moreOn ? 'on' : ''} onClick={onMore} aria-haspopup="dialog" aria-label="Thêm: thống kê, tổ chức, tài khoản">
+      <span className="m-tab-ico"><Glyph name="more" size={22} /></span><span>Thêm</span>
+    </button>,
+  ].filter(Boolean);
   return (
-    <nav className={`m-tabbar ${canCreate ? '' : 'no-fab'}`} aria-label="Điều hướng nhanh">
-      {tab(home, path === home, 'Trang chủ', <Glyph name="dashboard" size={22} />)}
-      {tab('/cong-viec', taskOn, 'Công việc', <Glyph name="tasks" size={22} />, taskBadge)}
-      {canCreate ? <Link to="/cong-viec/tao" className={`m-fab ${path === '/cong-viec/tao' ? 'on' : ''}`} aria-label="Tạo công việc"><Glyph name="plus" size={24} /></Link> : null}
-      {tab('/thong-bao', path === '/thong-bao', 'Thông báo', <Svg size={22}>{P.bell}</Svg>, unread)}
-      {tab(me, (path === '/ho-so' && search.get('id') === String(session?.user.id)) || path === '/doi-mat-khau', 'Tôi', <Glyph name="user" size={22} />)}
+    <nav className="m-tabbar" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }} aria-label="Điều hướng nhanh">
+      {items.map((x, i) => <Fragment key={i}>{x}</Fragment>)}
     </nav>
+  );
+}
+
+/** Bảng "Thêm" trượt từ dưới lên: chức năng phụ để xem + tài khoản. Chức năng nhập liệu phức tạp nhắc dùng máy tính. */
+function MoreSheet({ access, home, onClose, onLogout }: { access: ReturnType<typeof useAccess>; home: string; onClose: () => void; onLogout: () => void }) {
+  const s = useSession();
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => { const d = ref.current; if (d && !d.open) d.showModal(); }, []);
+  const close = (then?: () => void) => closeDialog(ref.current, () => { onClose(); then?.(); });
+  const u = s.session!.user;
+  const row = (to: string, icon: Parameters<typeof Glyph>[0]['name'], label: string, sub?: string) => (
+    <Link key={to} className="sheet-item sheet-link" to={to} onClick={() => close()}>
+      <Glyph name={icon} size={20} /><span><b>{label}</b>{sub ? <small>{sub}</small> : null}</span>
+    </Link>
+  );
+  // Các trang theo vai trò khác trang chủ (ví dụ trưởng khoa vừa có Trang trưởng khoa vừa có Trang cá nhân).
+  const portals = s.portals.filter((p) => '/' + p.key !== home && !DESKTOP_ONLY.has('/' + p.key));
+  const view = [
+    ...portals.map((p) => row('/' + p.key, PORTAL_ICONS[p.key] ?? 'dashboard', p.title)),
+    access.canViewUnitStats ? row('/thong-ke', 'chart', 'Thống kê đơn vị', 'Tiến độ, đúng hạn theo đơn vị') : null,
+    access.caps.isMember ? row('/thong-ke-ca-nhan', 'userChart', 'Thống kê của tôi', 'Kết quả và việc của bạn') : null,
+    row('/cong-viec?view=calendar', 'calendar', 'Lịch công việc', 'Hạn chót theo ngày'),
+    access.hasManageScope ? row('/to-chuc', 'sitemap', 'Cơ cấu tổ chức') : null,
+    access.hasManageScope ? row('/nhan-su', 'users', 'Nhân sự') : null,
+  ].filter(Boolean);
+  return (
+    <dialog ref={ref} className="action-sheet more-sheet" aria-labelledby="more-title" onCancel={(e) => { e.preventDefault(); close(); }}
+      onClick={(e) => { if (e.target === ref.current) close(); }}>
+      <div className="more-account">
+        <span className="avatar account-avatar" aria-hidden="true">{u.initials}</span>
+        <span><b id="more-title">{u.name}</b><small>{u.roleSummary || u.email}</small></span>
+      </div>
+      <div className="sheet-list">{view}</div>
+      <div className="sheet-list">
+        {row(`/ho-so?id=${u.id}`, 'user', 'Hồ sơ của tôi')}
+        {row('/doi-mat-khau', 'shield', 'Đổi mật khẩu')}
+        <button type="button" className="sheet-item danger" onClick={() => close(onLogout)}>Đăng xuất</button>
+      </div>
+      <p className="more-note"><Glyph name="info" size={15} />Tạo, giao việc và quản trị có đầy đủ trên máy tính.</p>
+      <button type="button" className="button secondary sheet-cancel" onClick={() => close()}>Đóng</button>
+    </dialog>
   );
 }
 
@@ -286,6 +340,20 @@ function DesktopOnly() {
         <Link className="button secondary" to="/thong-bao">Thông báo</Link>
       </div>
     </div>
+  );
+}
+
+/** Tài khoản quản trị mở trên điện thoại: không có giao diện điện thoại, chỉ nhắc dùng máy tính và cho đăng xuất. */
+function AdminOnDesktop({ onLogout }: { onLogout: () => void }) {
+  return (
+    <main className="content admin-mobile" id="main-content">
+      <div className="desktop-only card">
+        <span className="desktop-only-ico"><Glyph name="settings" size={28} /></span>
+        <h1 id="page-title" tabIndex={-1}>Quản trị dùng trên máy tính</h1>
+        <p className="muted">Bản điện thoại dành cho người giao việc và người nhận việc. Tài khoản quản trị hệ thống vui lòng đăng nhập trên máy tính.</p>
+        <div className="actions"><button type="button" className="button secondary" onClick={onLogout}>Đăng xuất</button></div>
+      </div>
+    </main>
   );
 }
 
@@ -322,17 +390,23 @@ export function Shell() {
   const navigate = useNavigate();
   const { toast } = useUi();
   const [menu, setMenu] = useState(false);
+  const [more, setMore] = useState(false);
   const review = useTaskList('review', access.canReviewAny);
   useMobileTables();
   const mobile = useIsMobile();
   // Chỉ cuộn lên đầu khi sang trang khác; đổi bộ lọc/tìm kiếm (?q=…) giữ nguyên vị trí đang xem.
   useEffect(() => { setMenu(false); }, [loc.pathname, loc.search]);
+  useEffect(() => { if (!mobile) setMore(false); }, [mobile]);
   useEffect(() => { window.scrollTo(0, 0); }, [loc.pathname]);
 
   if (!s.session) return <Navigate to="/" replace />;
   const path = loc.pathname;
   const params = new URLSearchParams(loc.search);
   if (!access.canOpen(path, params)) return <Navigate to={'/' + s.defaultPortal} replace />;
+  // Điện thoại chỉ dành cho người giao việc / nhận việc: tài khoản chỉ có vai trò quản trị dùng bản máy tính.
+  if (mobile && access.isAdmin && !access.caps.isMember && !access.canCreate && !access.canAssignAny && !access.canReviewAny) {
+    return <AdminOnDesktop onLogout={() => void s.logout().then(() => navigate('/', { replace: true }))} />;
+  }
 
   // Điện thoại không có Bảng quản trị: về Trang cá nhân nếu có, không thì về danh sách công việc.
   const hasPersonal = s.portals.some((p) => p.key === 'ca-nhan');
@@ -350,12 +424,27 @@ export function Shell() {
 
   // Trang nhập liệu: trên điện thoại ẩn thanh dưới, ghim nút Lưu ở đáy màn hình.
   const formPage = ['/cong-viec/tao', '/cong-viec/sua', '/them-nhan-su', '/sua-nhan-su', '/them-don-vi', '/them-thanh-vien', '/doi-mat-khau'].includes(path);
+  // Chi tiết công việc: ẩn thanh dưới, thay bằng thanh thao tác ghim ở đáy (TaskDetail.tsx).
+  const detailPage = path === '/cong-viec/chi-tiet';
+  // Thanh trên điện thoại: trang gốc (các ô ở thanh dưới) hiện logo; trang con hiện nút Quay lại.
+  // Trang mở thẳng từ thanh dưới hoặc ô "Thêm": hiện logo; trang con (chi tiết, hồ sơ người khác…) hiện nút Quay lại.
+  const rootPages = new Set([mobileHome, '/cong-viec', '/cho-duyet', '/thong-bao', '/thong-ke', '/thong-ke-ca-nhan', '/to-chuc', '/nhan-su']);
+  const subPage = !rootPages.has(path);
+  const selfProfile = path === '/ho-so' && Number(params.get('id')) === s.session.user.id;
+  const mTitle = path === mobileHome ? 'Trang chủ' : path === '/ho-so' ? (selfProfile ? 'Hồ sơ của tôi' : 'Hồ sơ nhân sự') : crumb;
+  const parentOf = (p: string) => (p.startsWith('/cong-viec/') ? '/cong-viec' : p === '/ho-so' && !selfProfile ? '/nhan-su' : mobileHome);
+  const goBack = () => {
+    // Chi tiết công việc: chuyển tab cũng ghi lịch sử, nên "Quay lại" về thẳng trang chủ
+    if (detailPage) { navigate(mobileHome); return; }
+    const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0;
+    if (idx > 0) navigate(-1); else navigate(parentOf(path), { replace: true });
+  };
 
   return (
-    <div className={`shell ${formPage ? 'is-form' : ''}`}>
+    <div className={`shell ${formPage ? 'is-form' : ''} ${detailPage ? 'is-detail' : ''} ${subPage ? 'is-sub' : 'is-root'}`}>
       <a className="skip-link" href="#main-content" onClick={(e) => { e.preventDefault(); document.getElementById('main-content')?.focus(); }}>Chuyển đến nội dung</a>
       <aside className={`sidebar ${menu ? 'open' : ''}`} id="sidebar" aria-label="Thanh điều hướng">
-        <Link className="brand" to="/"><span className="brand-mark"><Glyph name="tasks" size={19} /></span><span><span className="brand-name">Quản lý công việc</span><small>Khoa Công nghệ Thông tin</small></span></Link>
+        <Link className="brand" to="/"><img className="brand-mark brand-logo" src="/logo-huit.webp" alt="" width="36" height="36" /><span><span className="brand-name">Quản lý công việc</span><small>Khoa Công nghệ Thông tin</small></span></Link>
         <div className="nav-label">TRANG CỦA TÔI</div>
         <nav aria-label="Trang theo vai trò">
           {s.portals.filter((p) => !(mobile && DESKTOP_ONLY.has('/' + p.key))).map((p) => {
@@ -370,6 +459,13 @@ export function Shell() {
       <div className="main">
         <div className="topbar">
           <button className="mobile-menu" aria-label="Mở menu" aria-controls="sidebar" aria-expanded={menu} onClick={() => setMenu((m) => !m)}><Svg size={20}><path d="M4 7h16M4 12h16M4 17h10" /></Svg></button>
+          {subPage
+            ? <button type="button" className="m-back" onClick={goBack} aria-label="Quay lại"><Glyph name="chevron" size={22} /></button>
+            : <Link className="m-brand" to={mobileHome} aria-label="Trang chủ"><img className="brand-mark brand-logo" src="/logo-huit.webp" alt="" width="36" height="36" /></Link>}
+          <span className={`m-head ${subPage ? 'sub' : ''}`} aria-hidden="true">
+            {subPage ? null : <span className="m-head-brand"><b>Khoa Công nghệ Thông tin</b><small>Quản lý công việc</small></span>}
+            <span className="m-head-title">{mTitle}</span>
+          </span>
           <span className="breadcrumb-first">Không gian làm việc</span>
           <Icon name="chevron" />
           <span className="current">{crumb}</span>
@@ -381,7 +477,8 @@ export function Shell() {
           <div className="page-anim" key={path}>{mobile && DESKTOP_ONLY.has(path) ? <DesktopOnly /> : <Outlet />}</div>
         </main>
       </div>
-      <MobileTabBar path={path} home={mobileHome} canCreate={access.canCreate} taskBadge={review.data?.counts.review ?? 0} />
+      <MobileTabBar path={path} home={mobileHome} access={access} reviewBadge={review.data?.counts.review ?? 0} onMore={() => setMore(true)} />
+      {more && mobile ? <MoreSheet access={access} home={mobileHome} onClose={() => setMore(false)} onLogout={() => void logout()} /> : null}
       <DueAlert />
     </div>
   );

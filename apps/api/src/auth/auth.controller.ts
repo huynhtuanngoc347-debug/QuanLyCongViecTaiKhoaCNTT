@@ -15,6 +15,10 @@ import {
 import { loginThrottle } from './login-throttle';
 import { isRevoked, isSessionId, newSessionId, revokeSession } from './session-revocation';
 import { DUMMY_HASH, fingerprint, hashPassword, validateNewPassword, verifyPassword } from './password-hasher';
+import {
+  RESET_MAX_TRIES, RESET_MINUTES, RESET_RESEND_SECONDS, deliverResetCode, hasResetTable, hashResetCode, newResetCode, resetLimiter, sameHash,
+} from './password-reset';
+import { isValidEmail } from '../staff/staff.commands';
 
 interface LoginRow { MaNguoiDung: number; HoTen: string; Email: string; MatKhauBam: string; TrangThaiTaiKhoan: boolean; }
 
@@ -22,7 +26,22 @@ interface LoginRow { MaNguoiDung: number; HoTen: string; Email: string; MatKhauB
 export async function loadSession(db: SqlRunner, userId: number): Promise<SessionDto | null> {
   const user = await loadActiveUser(db, userId);
   if (!user) return null;
-  const roleSummary = await db.scalar<string>('SELECT ChucVuHienThi FROM dbo.vw_HoSoNguoiDung WHERE MaNguoiDung = @userId;', { userId });
+  // Cùng điều kiện với vw_HoSoNguoiDung, nhưng chức vụ nhiều quyền đứng trước (view xếp theo chữ cái)
+  const roleNames = (await db.query<{ TenChucVu: string }>(
+    `DECLARE @HomNay DATE = CONVERT(DATE, SYSUTCDATETIME());
+     SELECT c.TenChucVu
+     FROM dbo.ThanhVienDonVi AS tv
+     JOIN dbo.ChucVu AS c ON c.MaChucVu = tv.MaChucVu
+     JOIN dbo.DonVi AS dv ON dv.MaDonVi = tv.MaDonVi
+     WHERE tv.MaNguoiDung = @userId AND tv.TrangThai = 1 AND c.TrangThai = 1 AND dv.TrangThai = 1
+       AND tv.NgayThamGia <= @HomNay AND (tv.NgayKetThuc IS NULL OR tv.NgayKetThuc >= @HomNay)
+     GROUP BY c.TenChucVu
+     ORDER BY MAX(CAST(c.DuocQuanLyThanhVien AS INT) + CAST(c.DuocTaoCongViec AS INT) + CAST(c.DuocGiaoViec AS INT)
+                + CAST(c.DuocDuyetKetQua AS INT) + CAST(c.DuocDanhGia AS INT) + CAST(c.DuocXemBaoCaoDonVi AS INT)
+                + CAST(c.ApDungChoDonViCon AS INT)) DESC, c.TenChucVu;`, { userId })).map((r) => r.TenChucVu);
+  // "Thành viên" chỉ là tư cách chung — bỏ khi đã có chức vụ cụ thể
+  const named = roleNames.filter((n) => n.trim().toLowerCase() !== 'thành viên');
+  const roleSummary = (named.length ? named : roleNames).join('; ');
   const caps = await capabilities(db, user);
   const userPortals = await portals(db, user);
   const rights = await loadRights(db, userId);
@@ -202,5 +221,84 @@ export class AuthController {
       res.status(200);
       return { tokens } as unknown as void;
     }
+  }
+
+  /** Quên mật khẩu bước 1: gửi mã 6 chữ số về email. Luôn trả cùng một câu, không tiết lộ email nào có tài khoản. */
+  @Public()
+  @Post('quen-mat-khau')
+  @HttpCode(200)
+  async forgotPassword(@Body() body: Record<string, unknown>, @ClientIp() ip: string | null): Promise<{ message: string }> {
+    const email = (toStr(body?.email) ?? '').trim();
+    if (!isValidEmail(email)) throw new FieldErrorsException({ email: 'Nhập email hợp lệ, ví dụ ten@huit.edu.vn.' });
+    const key = `gui-ma:${email}`;
+    if (resetLimiter.isBlocked(ip, key)) throw new ApiException(429, 'Bạn đã yêu cầu mã quá nhiều lần. Vui lòng thử lại sau 15 phút.');
+    resetLimiter.recordFailure(ip, key);
+    const issued = await this.db.tx(null, async (db) => {
+      if (!(await hasResetTable(db))) return 'missing' as const;
+      const user = await db.one<{ MaNguoiDung: number; Email: string; HoTen: string }>('SELECT MaNguoiDung, Email, HoTen FROM dbo.NguoiDung WHERE Email = @email AND TrangThaiTaiKhoan = 1;', { email });
+      if (!user) return null;
+      const id = user.MaNguoiDung;
+      const recent = await db.scalar<number>('SELECT COUNT(*) FROM dbo.MaDatLaiMatKhau WHERE MaNguoiDung = @id AND NgayTao > DATEADD(SECOND, -@wait, SYSUTCDATETIME());', { id, wait: RESET_RESEND_SECONDS });
+      if (recent) return null;
+      const code = newResetCode();
+      await db.exec(
+        `UPDATE dbo.MaDatLaiMatKhau SET DaDung = 1 WHERE MaNguoiDung = @id AND DaDung = 0;
+         INSERT dbo.MaDatLaiMatKhau (MaNguoiDung, MaBam, HetHan, DiaChiIP) VALUES (@id, @hash, DATEADD(MINUTE, @minutes, SYSUTCDATETIME()), @ip);`,
+        { id, hash: hashResetCode(id, code), minutes: RESET_MINUTES, ip: ip?.slice(0, 45) ?? null },
+      );
+      await writeAudit(db, id, 'GuiMaDatLaiMatKhau', 'NguoiDung', String(id), null, null, ip);
+      return { email: user.Email, name: user.HoTen, code };
+    });
+    if (issued === 'missing') throw new ApiException(503, 'Chức năng quên mật khẩu chưa được bật. Liên hệ quản trị viên khoa.');
+    if (issued) await deliverResetCode(issued.email, issued.name, issued.code);
+    return { message: `Nếu email có tài khoản đang hoạt động, mã xác thực đã được gửi tới hộp thư. Mã có hiệu lực ${RESET_MINUTES} phút.` };
+  }
+
+  /** Quên mật khẩu bước 2: nhập mã + mật khẩu mới. Mọi phiên cũ bị đăng xuất (dấu vân tay mật khẩu đổi). */
+  @Public()
+  @Post('dat-lai-mat-khau')
+  @HttpCode(204)
+  async resetPassword(@Body() body: Record<string, unknown>, @ClientIp() ip: string | null): Promise<void> {
+    const email = (toStr(body?.email) ?? '').trim();
+    const code = (toStr(body?.code) ?? '').trim();
+    const next = toStr(body?.newPassword) ?? '';
+    const errors: Record<string, string> = {};
+    if (!isValidEmail(email)) errors.email = 'Nhập email hợp lệ, ví dụ ten@huit.edu.vn.';
+    if (!/^\d{6}$/.test(code)) errors.code = 'Mã xác thực gồm 6 chữ số.';
+    const rule = validateNewPassword(next);
+    if (rule) errors.newPassword = rule;
+    if (Object.keys(errors).length) throw new FieldErrorsException(errors);
+    const key = `dat-lai:${email}`;
+    if (resetLimiter.isBlocked(ip, key)) throw new ApiException(429, 'Nhập sai mã quá nhiều lần. Vui lòng thử lại sau 15 phút.');
+
+    const newHash = await hashPassword(next);
+    const changed = await this.db.tx(null, async (db) => {
+      if (!(await hasResetTable(db))) return false;
+      const user = await db.one<{ MaNguoiDung: number }>('SELECT MaNguoiDung FROM dbo.NguoiDung WITH (UPDLOCK, HOLDLOCK) WHERE Email = @email AND TrangThaiTaiKhoan = 1;', { email });
+      if (!user) return false;
+      const id = user.MaNguoiDung;
+      const row = await db.one<{ MaYeuCau: number; MaBam: string }>(
+        `SELECT TOP 1 MaYeuCau, MaBam FROM dbo.MaDatLaiMatKhau WITH (UPDLOCK, HOLDLOCK)
+         WHERE MaNguoiDung = @id AND DaDung = 0 AND HetHan > SYSUTCDATETIME() ORDER BY NgayTao DESC;`, { id });
+      if (!row) return false;
+      if (!sameHash(row.MaBam, hashResetCode(id, code))) {
+        await db.exec(
+          `UPDATE dbo.MaDatLaiMatKhau SET SoLanThu = SoLanThu + 1, DaDung = CASE WHEN SoLanThu + 1 >= @max THEN 1 ELSE 0 END
+           WHERE MaYeuCau = @requestId;`, { requestId: row.MaYeuCau, max: RESET_MAX_TRIES });
+        await writeAudit(db, id, 'DatLaiMatKhauThatBai', 'NguoiDung', String(id), null, null, ip);
+        return false;
+      }
+      await db.exec(
+        `UPDATE dbo.NguoiDung SET MatKhauBam = @newHash WHERE MaNguoiDung = @id;
+         UPDATE dbo.MaDatLaiMatKhau SET DaDung = 1 WHERE MaNguoiDung = @id AND DaDung = 0;`, { newHash, id });
+      await writeAudit(db, id, 'DatLaiMatKhau', 'NguoiDung', String(id), null, null, ip);
+      return true;
+    });
+    if (!changed) {
+      resetLimiter.recordFailure(ip, key);
+      throw new FieldErrorsException({ code: 'Mã xác thực không đúng hoặc đã hết hạn. Hãy kiểm tra lại hoặc gửi mã mới.' });
+    }
+    resetLimiter.recordSuccess(ip, key);
+    loginThrottle.recordSuccess(ip, email);
   }
 }

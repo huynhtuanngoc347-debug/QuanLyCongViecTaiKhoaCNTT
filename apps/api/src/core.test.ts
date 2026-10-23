@@ -5,6 +5,7 @@ import { SqlRunner } from './db/db.service';
 import { initials, normalize, unitInitials, collapseSpaces } from './common/text';
 import { addMonths, localDate, localText, parseVnDate } from './common/vn-time';
 import { unitTypeToDb, unitTypeLabel } from './common/mapping';
+import { hashResetCode, newResetCode, sameHash } from './auth/password-reset';
 
 test('băm mật khẩu kiểu ASP.NET Identity V3 và kiểm tra lại được', async () => {
   const hash = await hashPassword('Demo@CNTT2026!');
@@ -52,4 +53,14 @@ test('giờ Việt Nam: ngày nhập hiểu theo UTC+7', () => {
   assert.equal(localDate(new Date('2026-10-04T18:00:00Z')), '2026-10-05');
   assert.equal(localText(new Date('2026-10-04T18:00:00Z')), '05/10/2026');
   assert.equal(addMonths(new Date('2026-08-31T00:00:00Z'), 6).toISOString().slice(0, 10), '2027-02-28');
+});
+
+test('mã quên mật khẩu: 6 chữ số, HMAC gắn với người dùng, so khớp không phân biệt hoa/thường', () => {
+  for (let i = 0; i < 50; i++) assert.match(newResetCode(), /^\d{6}$/);
+  const h = hashResetCode(7, '012345');
+  assert.equal(h.length, 64);
+  assert.ok(sameHash(h.toUpperCase(), h));
+  assert.ok(!sameHash(h, hashResetCode(8, '012345')));
+  assert.ok(!sameHash(h, hashResetCode(7, '012346')));
+  assert.ok(!sameHash('ngan', h));
 });

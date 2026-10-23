@@ -311,16 +311,17 @@ export async function detail(db: SqlRunner, r: TaskRights, taskId: number): Prom
       declines: aDecl.map(toDecline),
       actions: {
         canAccept: assignee && st === P.AsWaiting && running,
-        canReject: assignee && st === P.AsWaiting && running,
+        canReject: assignee && st === P.AsWaiting && running && !pendingDecl,
         canDelegate: !readOnly && P.isUnitManagerOf(r, a) && P.isOpen(a) && running,
         canUpdateProgress: assignee && (st === P.AsAccepted || st === P.AsWorking) && running,
         canSubmit: assignee && (st === P.AsAccepted || st === P.AsWorking) && running,
         canEvaluate: !readOnly && latest?.TrangThaiNop === 0 && st === P.AsReview && P.canEvaluate(r, t, a),
-        canRequestExtension: assignee && P.isOpen(a) && running && !pendingExt && approved < P.MAX_APPROVED_EXTENSIONS,
+        canRequestExtension: assignee && P.isOpen(a) && running && !pendingExt && !pendingDecl && approved < P.MAX_APPROVED_EXTENSIONS,
         canDecideExtension: !readOnly && !!pendingExt && P.canDecideExtension(r, t, a, pendingExt.MaNguoiYeuCau),
-        canCancel: canManageThis && (st === P.AsWaiting || st === P.AsAccepted || st === P.AsWorking || st === P.AsReview),
-        canRemind: canManageThis && P.isOpen(a) && running,
-        // Chưa tiếp nhận thì dùng "Từ chối" (canReject); đã tiếp nhận/đang làm thì phải xin và chờ duyệt.
+        // Đang chờ duyệt xin từ chối: người giao chỉ cần quyết định (Đồng ý đã thay cho Hủy phân công; không nhắc người đang xin thôi).
+        canCancel: canManageThis && !pendingDecl && (st === P.AsWaiting || st === P.AsAccepted || st === P.AsWorking || st === P.AsReview),
+        canRemind: canManageThis && !pendingDecl && P.isOpen(a) && running,
+        // Chưa tiếp nhận dùng "Từ chối" (canReject), đã tiếp nhận dùng "Xin từ chối"; cả hai đều chờ người giao duyệt.
         canRequestDecline: assignee && (st === P.AsAccepted || st === P.AsWorking) && running && !pendingDecl && declineEnabled,
         canDecideDecline: !readOnly && !!pendingDecl && P.canDecideDecline(r, t, a, pendingDecl.MaNguoiYeuCau),
       },

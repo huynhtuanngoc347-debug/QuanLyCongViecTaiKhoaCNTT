@@ -56,6 +56,8 @@ export function logHistory(
 export const FILE_PREFIX = 'upload:';
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 export const MAX_FILES = 10;
+/** Tổng số tệp đính kèm của một công việc (tài liệu người giao gửi kèm). */
+export const MAX_TASK_FILES = 20;
 export const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv', '.png', '.jpg', '.jpeg', '.gif', '.zip', '.rar', '.7z'];
 
 export interface UploadedFile { originalname: string; size: number; mimetype: string; path: string; filename: string; }

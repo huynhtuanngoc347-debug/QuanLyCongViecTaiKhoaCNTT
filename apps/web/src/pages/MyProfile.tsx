@@ -23,14 +23,14 @@ function Row({ to, icon, label, note, tone, onClick }: { to?: string; icon: Glyp
     : <button type="button" className={`mp-row ${tone ?? ''}`} onClick={onClick}>{body}</button>;
 }
 
-/** Hồ sơ của chính mình trên điện thoại (tab "Tôi"): thông tin, kết quả học kỳ, đơn vị, lối tắt và tài khoản. */
+/** Hồ sơ của chính mình trên điện thoại (tab "Tôi"): thông tin, kết quả năm học, đơn vị, lối tắt và tài khoản. */
 export function MyProfileMobile({ person }: { person: PersonDto }) {
   const { org, session, logout } = useSession();
   const access = useAccess();
   const navigate = useNavigate();
   const { toast } = useUi();
-  const p = periodOf(new URLSearchParams({ period: 'semester' }));
-  const [from, to] = [p.presets.semester[0], p.presets.semester[1]];
+  const p = periodOf(new URLSearchParams({ period: 'year' }));
+  const [from, to] = [p.presets.year[0], p.presets.year[1]];
   const q = useQuery({
     queryKey: ['stats', 'me', '', from, to],
     queryFn: () => get<PersonalStatsDto>(`/api/thong-ke/ca-nhan?from=${from}&to=${to}`),
@@ -65,14 +65,14 @@ export function MyProfileMobile({ person }: { person: PersonDto }) {
 
       {access.caps.isMember ? (
         <>
-          <section className="mp-stats" aria-label="Công việc trong học kỳ">
+          <section className="mp-stats" aria-label="Công việc trong năm học">
             <Link to="/cong-viec?scope=assigned"><b>{s?.assigned ?? '–'}</b><small>Được giao</small></Link>
             <Link to="/cong-viec?scope=assigned&status=4"><b className="green">{s?.completed ?? '–'}</b><small>Hoàn thành</small></Link>
             <Link to="/cong-viec?scope=assigned&overdue=1"><b className={s?.overdue ? 'red' : ''}>{s?.overdue ?? '–'}</b><small>Quá hạn</small></Link>
           </section>
 
           <section className="mp-card mp-rate" aria-labelledby="mp-rate-title">
-            <div className="mp-card-head"><h2 id="mp-rate-title">Tỷ lệ đúng hạn</h2><span>{p.presets.semester[2]}</span></div>
+            <div className="mp-card-head"><h2 id="mp-rate-title">Tỷ lệ đúng hạn</h2><span>{p.presets.year[2]}</span></div>
             {!s ? <p className="muted small">{q.error ? (q.error as Error).message : 'Đang tính…'}</p> : (
               <>
                 <div className="mp-rate-big">
@@ -103,7 +103,7 @@ export function MyProfileMobile({ person }: { person: PersonDto }) {
       </section>
 
       <section className="mp-card mp-list" aria-label="Lối tắt">
-        {access.caps.isMember ? <Row to="/thong-ke-ca-nhan" icon="userChart" label="Thống kê của tôi" note="Theo tháng, học kỳ, năm học" /> : null}
+        {access.caps.isMember ? <Row to="/thong-ke-ca-nhan" icon="userChart" label="Thống kê của tôi" note="Theo tháng, năm học" /> : null}
         {access.canViewUnitStats ? <Row to="/thong-ke" icon="chart" label="Thống kê đơn vị" /> : null}
         {access.hasManageScope ? <Row to="/nhan-su" icon="users" label="Nhân sự" /> : null}
         {access.hasManageScope ? <Row to="/to-chuc" icon="sitemap" label="Cơ cấu tổ chức" /> : null}

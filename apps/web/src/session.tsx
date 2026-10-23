@@ -58,6 +58,33 @@ export function SessionProvider({ children, onExpired }: { children: ReactNode; 
     qc.clear();
   }), [qc, onExpired]);
 
+  // Quyền (chức vụ, đơn vị) có thể bị quản trị đổi trong lúc trang đang mở: tải lại phiên khi quay lại tab
+  // và mỗi phút khi tab đang hiện, để menu và nút khớp với quyền máy chủ đang áp dụng.
+  // Quyền đổi thì làm mới cả dữ liệu đã tải (danh sách công việc, thống kê) vì phạm vi xem cũng đổi theo.
+  const signedIn = !!session;
+  useEffect(() => {
+    if (!signedIn) return;
+    let busy = false;
+    const refresh = async () => {
+      if (busy || document.visibilityState !== 'visible') return;
+      busy = true;
+      try {
+        const fresh = await get<SessionDto>('/api/auth/me');
+        setSession((old) => {
+          if (old && JSON.stringify(old) === JSON.stringify(fresh)) return old;
+          void qc.invalidateQueries();
+          return fresh;
+        });
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 401) setSession(null);
+      } finally { busy = false; }
+    };
+    const timer = window.setInterval(() => void refresh(), 60_000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh); };
+  }, [signedIn, qc]);
+
   const orgQuery = useQuery({ queryKey: ['org'], queryFn: () => get<OrganizationDto>('/api/to-chuc'), enabled: !!session, staleTime: 60_000 });
 
   const value = useMemo<SessionApi>(() => {

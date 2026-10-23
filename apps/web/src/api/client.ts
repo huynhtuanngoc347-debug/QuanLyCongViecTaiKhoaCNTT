@@ -68,6 +68,29 @@ async function parse<T>(response: Response, path: string): Promise<T> {
   throw new ApiError(response.status, p?.message || `Máy chủ trả lỗi ${response.status}.`, p?.errors ?? null);
 }
 
+/**
+ * Mở (xem) hoặc tải tệp đính kèm. Link thường không đi qua raw() nên không tự làm mới phiên
+ * (access token 15 phút) → kiểm phiên trước. Cửa sổ xem mở ngay lúc bấm (tránh bị chặn popup) rồi mới gán địa chỉ.
+ */
+export async function openFile(url: string, view: boolean): Promise<void> {
+  const win = view ? window.open('about:blank', '_blank') : null;
+  if (win) win.opener = null;
+  try {
+    if ((await raw('GET', '/api/auth/me')).status === 401) {
+      win?.close();
+      listeners.forEach((fn) => fn());
+      return;
+    }
+  } catch { /* mất kết nối: vẫn thử mở, trình duyệt sẽ báo lỗi */ }
+  if (win) { win.location.href = url; return; }
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 /** Gọi API; lỗi ném ApiError. */
 export async function api<T = unknown>(method: string, path: string, body?: unknown): Promise<T> {
   return parse<T>(await raw(method, path, body), path);

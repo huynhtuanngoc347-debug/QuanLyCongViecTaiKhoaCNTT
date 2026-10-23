@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BellRing, CalendarDays, Check, ClipboardCheck, Download, FileText, Flag, MoreHorizontal, Paperclip, Send, Settings2, Upload, UserRound, X } from 'lucide-react';
 import type { AssignmentDto, CommentDto, FileDto, ResultDto, TaskDetailDto } from '@khoa/shared';
-import { api, get, send, upload } from '../api';
+import { BASE, api, get, openFile, send, upload } from '../api';
 import { useSession } from '../session';
 import { Avatar, Badge, FieldError, LoadError, PageHeader, PRIORITY, Progress, SectionTitle, Sheet, StateView, button, buttonGhost, field, statusOf, useAfterChange, useTaskDetail, useUi } from '../ui';
 import { friendly, fullDate, kb, relative, remaining } from '../format';
@@ -18,8 +18,21 @@ function Files({ files }: { files: FileDto[] }) {
     <div className="space-y-2">
       {files.map((f) => {
         const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+        const view = VIEWABLE.includes(ext);
+        const url = `${BASE}/api/tep/${f.id}${view ? '?xem=1' : ''}`;
+        // Tệp chỉ có trong CSDL (dữ liệu mẫu), không có trên máy chủ: không cho bấm, tránh trang lỗi.
+        if (!f.downloadable) return (
+          <div key={f.id} className="flex items-center gap-3 rounded-xl border border-dashed border-border bg-slate-50 p-3 text-left" title="Dữ liệu mẫu: chưa có tệp thật">
+            <span className="rounded-lg bg-slate-100 p-2 text-slate-400"><FileText size={21} /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-semibold text-slate-500">{f.name}</span>
+              <span className="text-[11px] text-slate-400">{kb(f.size)} · Tệp mẫu, không có trên máy chủ</span>
+            </span>
+          </div>
+        );
         return (
-          <a key={f.id} href={VIEWABLE.includes(ext) ? `/api/tep/${f.id}?xem=1` : `/api/tep/${f.id}`} target="_blank" rel="noopener noreferrer"
+          <a key={f.id} href={url} target={view ? '_blank' : undefined} download={view ? undefined : f.name} rel="noopener noreferrer"
+            onClick={(e) => { e.preventDefault(); void openFile(url, view); }}
             className="flex items-center gap-3 rounded-xl border border-border bg-white p-3 text-left active:scale-[0.99]">
             <span className="rounded-lg bg-blue-50 p-2 text-primary"><FileText size={21} /></span>
             <span className="min-w-0 flex-1">
@@ -322,6 +335,16 @@ export function TaskDetail() {
                 <Badge status={A_BADGE[a.status]} />
               </div>
               <div className="mt-3 flex items-center gap-3"><div className="flex-1"><Progress value={a.progress} tone={a.overdue ? 'red' : undefined} /></div><span className="text-[11px] font-bold text-slate-500">{Math.round(a.progress)}%</span></div>
+              {/* Kết quả của người khác đã nộp (đã duyệt hoặc chưa đến lượt mình duyệt): xem nội dung, tải tệp — như bản web. */}
+              {a.id !== mine?.id && a.results.length && !ev ? (
+                <details className="group mt-3">
+                  <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between rounded-xl bg-white px-3 text-[12px] font-bold text-slate-600">
+                    <span>Kết quả đã nộp · lần {a.results[0].attempt}{a.results[0].files.length ? ` · ${a.results[0].files.length} tệp` : ''}</span>
+                    <span className="text-slate-400 transition group-open:rotate-90">›</span>
+                  </summary>
+                  <div className="mt-2"><ResultBlock r={a.results[0]} /></div>
+                </details>
+              ) : null}
               {ev || ext || dec || a.actions.canRemind ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {ev ? <button className="min-h-10 rounded-xl bg-primary px-3 text-[12px] font-bold text-white" onClick={() => setSheet({ kind: 'evaluate', a, r: a.results[0] })}>Đánh giá kết quả</button> : null}

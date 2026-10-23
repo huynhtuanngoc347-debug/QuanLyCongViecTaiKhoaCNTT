@@ -7,6 +7,8 @@ import { dueInfo, isoDay, normalize, pct, todayIso } from '../format';
 import { useTitle } from '../pages/common';
 import { hashOf, useCategories, useTaskList } from './queries';
 import { useTaskActions } from './dialogs';
+import { Glyph } from '../ui/glyph';
+import { useDesktopFirst } from '../ui/DesktopFirst';
 
 interface Filters { scope: string; view: string; status: string; cat: string; prio: string; unit: string; overdue: boolean; soon: boolean; q: string; month: string; }
 
@@ -77,7 +79,7 @@ const M_GROUPS: [string, string, (t: TaskSummaryDto) => boolean][] = [
   ['cancel', 'Đã hủy', (t) => t.status === 6],
 ];
 
-function MobileList({ items }: { items: TaskSummaryDto[] }) {
+function MobileList({ items, inReview }: { items: TaskSummaryDto[]; inReview: boolean }) {
   const seen = new Set<number>();
   return (
     <div className="m-tasks">
@@ -97,11 +99,12 @@ function MobileList({ items }: { items: TaskSummaryDto[] }) {
                     <span className="m-task-main">
                       <strong>{t.title}</strong>
                       <span className="m-task-meta">
-                        <Badge map={STATUS} value={t.status} />
+                        {/* Nhãn trạng thái trùng tiêu đề nhóm thì bỏ; giữ khi khác (ví dụ nhóm Quá hạn, việc Tạm dừng, bản Nháp). */}
+                        {key === 'late' || STATUS[t.status]?.[0] !== label ? <Badge map={STATUS} value={t.status} /> : null}
                         {t.priority >= 3 ? <Prio value={t.priority} /> : null}
                         {due.text ? <span className={`due ${due.cls}`}>{due.text}</span> : null}
                       </span>
-                      {t.pendingReviews ? <span className="pill-alert">{t.pendingReviews} việc chờ bạn xử lý</span> : null}
+                      {t.pendingReviews && !inReview ? <span className="pill-alert">{t.pendingReviews} việc chờ bạn xử lý</span> : null}
                     </span>
                     <Avatars list={t.assignees.slice(0, 2)} />
                   </Link>
@@ -187,16 +190,109 @@ function Calendar({ items, f, link }: { items: TaskSummaryDto[]; f: Filters; lin
   );
 }
 
+/**
+ * Lịch cho điện thoại: lịch tháng gọn (chấm = có hạn chót), bấm một ngày để xem việc của ngày đó;
+ * mặc định hiện việc theo từng ngày trong tháng (tháng hiện tại: việc quá hạn trước, rồi từ hôm nay trở đi).
+ * Ngày của việc = hạn riêng của tôi nếu có, không thì hạn chung.
+ */
+function MobileCalendar({ items, f, link }: { items: TaskSummaryDto[]; f: Filters; link: (c: Partial<Record<keyof Filters, string | boolean>>) => string }) {
+  const [day, setDay] = useState<string | null>(null);
+  useEffect(() => { setDay(null); }, [f.month]);
+  const [y, m] = f.month.split('-').map(Number);
+  const today = todayIso(), thisMonth = today.slice(0, 7) === f.month;
+  const first = new Date(Date.UTC(y, m - 1, 1)), startDow = (first.getUTCDay() + 6) % 7, nDays = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const dueOf = (t: TaskSummaryDto) => t.myDue || t.due;
+  const byDay: Record<string, TaskSummaryDto[]> = {};
+  items.forEach((t) => { const d = dueOf(t); if (d) (byDay[isoDay(d)] ||= []).push(t); });
+  const tone = (t: TaskSummaryDto) => (t.overdue ? 'late' : t.status === 4 ? 'done' : t.status === 6 ? 'cancel' : t.dueSoon ? 'soon' : 'open');
+  const prev = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`, next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+  const iso = (d: number) => `${f.month}-${String(d).padStart(2, '0')}`;
+  const dayLabel = (d: string) => {
+    const w = new Date(d + 'T12:00:00Z').toLocaleDateString('vi-VN', { weekday: 'long', timeZone: 'UTC' });
+    return `${d === today ? 'Hôm nay · ' : ''}${w.charAt(0).toUpperCase() + w.slice(1)}, ${Number(d.slice(8))}/${Number(d.slice(5, 7))}`;
+  };
+  const short = (d: string) => `${Number(isoDay(d).slice(8))}/${Number(isoDay(d).slice(5, 7))}`;
+  // Danh sách bên dưới: ngày đang chọn; hoặc cả tháng (tháng này: việc quá hạn gom lên đầu, sau đó từ hôm nay trở đi).
+  const groups: [string, TaskSummaryDto[]][] = [];
+  if (day) groups.push([dayLabel(day), byDay[day] ?? []]);
+  else {
+    const late = thisMonth ? items.filter((t) => t.overdue && dueOf(t)).sort((a, b) => dueOf(a)!.localeCompare(dueOf(b)!)) : [];
+    if (late.length) groups.push(['Quá hạn', late]);
+    for (let d = 1; d <= nDays; d++) {
+      const k = iso(d);
+      if (thisMonth && k < today) continue;
+      const list = (byDay[k] ?? []).filter((t) => !(thisMonth && t.overdue));
+      if (list.length) groups.push([dayLabel(k), list]);
+    }
+  }
+  const total = Object.entries(byDay).filter(([k]) => k.startsWith(f.month)).reduce((n, [, l]) => n + l.length, 0);
+  return (
+    <div className="m-cal-wrap">
+      <section className="card m-cal" aria-label={`Lịch tháng ${m}/${y}`}>
+        <div className="m-cal-head">
+          <Link className="icon-button flip" to={link({ view: 'calendar', month: prev })} aria-label="Tháng trước"><Glyph name="chevron" size={20} /></Link>
+          <h2>Tháng {m}/{y}<small>{total ? `${total} hạn chót` : 'Không có hạn chót'}</small></h2>
+          <Link className="icon-button" to={link({ view: 'calendar', month: next })} aria-label="Tháng sau"><Glyph name="chevron" size={20} /></Link>
+          {thisMonth ? null : <Link className="button small secondary" to={link({ view: 'calendar', month: today.slice(0, 7) })}>Hôm nay</Link>}
+        </div>
+        <div className="m-cal-grid">
+          {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) => <span key={d} className="m-cal-dow" aria-hidden="true">{d}</span>)}
+          {[...Array(startDow)].map((_, i) => <span key={'e' + i} />)}
+          {[...Array(nDays)].map((_, i) => {
+            const k = iso(i + 1), list = byDay[k] ?? [];
+            const tones = [...new Set(list.map(tone))].slice(0, 3);
+            return (
+              <button key={k} type="button" className={`m-cal-day ${k === today ? 'today' : ''} ${day === k ? 'on' : ''} ${list.length ? 'has' : ''}`}
+                aria-pressed={day === k} aria-label={`${dayLabel(k)}${list.length ? `, ${list.length} việc` : ''}`}
+                onClick={() => setDay(day === k ? null : k)}>
+                <span>{i + 1}</span>
+                <i className="m-cal-dots" aria-hidden="true">{tones.map((t) => <b key={t} className={t} />)}</i>
+              </button>
+            );
+          })}
+        </div>
+        <p className="m-cal-legend" aria-hidden="true"><span><b className="late" />Quá hạn</span><span><b className="soon" />Sắp đến hạn</span><span><b className="open" />Đang làm</span><span><b className="done" />Xong</span></p>
+      </section>
+      {day ? <button type="button" className="link-button m-cal-all" onClick={() => setDay(null)}>‹ Xem cả tháng</button> : null}
+      {groups.length ? groups.map(([label, list]) => (
+        <section key={label} className="m-cal-group" aria-label={label}>
+          <h3 className={label === 'Quá hạn' ? 'late' : ''}>{label}<span>{list.length} việc</span></h3>
+          <div className="m-cal-list">
+            {list.map((t) => (
+              <Link key={t.id} className={`m-cal-item ${tone(t)}`} to={`/cong-viec/chi-tiet?id=${t.id}`}>
+                <strong>{t.title}</strong>
+                <span className="m-cal-meta">
+                  <Badge map={STATUS} value={t.status} />
+                  {t.priority >= 3 ? <Prio value={t.priority} /> : null}
+                  <span className="muted">{pct(t.progress)}%</span>
+                  {label === 'Quá hạn' && dueOf(t) ? <span className="due late">hạn {short(dueOf(t)!)}</span> : null}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )) : <div className="card"><Empty title={day ? 'Ngày này không có hạn chót' : thisMonth ? 'Không còn hạn chót nào trong tháng' : 'Tháng này không có hạn chót'} description="Chọn ngày khác hoặc chuyển tháng bằng nút ‹ ›." /></div>}
+    </div>
+  );
+}
+
 /** Danh sách công việc theo nhóm; fixedScope="review" là trang "Chờ tôi duyệt". */
 export function TaskListPage({ fixedScope }: { fixedScope?: string }) {
   const access = useAccess();
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const desk = useDesktopFirst();
   // Quản trị hệ thống không thuộc đơn vị nào thì không có "việc được giao": mặc định xem tất cả (chỉ đọc).
-  const f = filtersOf(params, fixedScope, access.caps.isMember ? 'assigned' : 'all');
+  const defaultScope = access.caps.isMember ? 'assigned' : 'all';
+  const f = filtersOf(params, fixedScope, defaultScope);
+  // Đường dẫn cũ ?scope=created của người không có quyền tạo việc: về mục mặc định thay vì hiện mục đã ẩn.
+  if (f.scope === 'created' && !access.canCreate) f.scope = defaultScope;
   const list = useTaskList(f.scope);
   const cats = useCategories().data ?? [];
   const [search, setSearch] = useState(f.q);
+  // Điện thoại: các bộ lọc chi tiết thu gọn sau nút "Bộ lọc" (hiện số bộ lọc đang bật).
+  const nActive = [f.status, f.cat, f.prio, f.unit].filter(Boolean).length;
+  const [moreOpen, setMoreOpen] = useState(nActive > 0);
   useTitle(fixedScope ? 'Chờ tôi duyệt' : 'Công việc');
   const base = fixedScope ? '/cho-duyet' : '/cong-viec';
   const link = (changes: Partial<Record<keyof Filters, string | boolean>>) => {
@@ -213,7 +309,8 @@ export function TaskListPage({ fixedScope }: { fixedScope?: string }) {
   const counts = list.data?.counts;
   const scopes: [string, string, boolean][] = [
     ['assigned', 'Tôi được giao', access.caps.isMember],
-    ['created', 'Tôi đã tạo / giao', access.canAssignAny || (counts?.created ?? 0) > 0],
+    // Chỉ người có quyền tạo việc (theo chức vụ) mới có mục "Tôi đã tạo / giao".
+    ['created', 'Tôi đã tạo / giao', access.canCreate],
     ['all', access.isAdmin ? 'Tất cả (chỉ đọc)' : 'Tất cả trong phạm vi', access.isAdmin || access.viewUnitIds.length > 0],
     ['review', 'Chờ tôi duyệt', access.canReviewAny || (counts?.review ?? 0) > 0],
   ];
@@ -227,8 +324,9 @@ export function TaskListPage({ fixedScope }: { fixedScope?: string }) {
     const items = list.data.items, shown = filterItems(items, f);
     body = (
       <div id="task-results">
-        {shown.length ? <div className="m-only"><MobileList items={shown} /></div> : null}
-        <div className={shown.length ? 'd-only' : ''}>
+        {f.view === 'calendar' ? <div className="m-only"><MobileCalendar items={shown} f={f} link={link} /></div>
+          : shown.length ? <div className="m-only"><MobileList items={shown} inReview={!!fixedScope} /></div> : null}
+        <div className={shown.length || f.view === 'calendar' ? 'd-only' : ''}>
         {f.view === 'kanban' ? <Kanban items={shown} /> : f.view === 'calendar' ? <Calendar items={shown} f={f} link={link} />
           : shown.length ? <Table shown={shown} total={items.length} />
             : <div className="card"><Empty title={items.length ? 'Không có công việc phù hợp bộ lọc' : EMPTY_TITLE[f.scope] ?? 'Chưa có công việc'}
@@ -242,7 +340,10 @@ export function TaskListPage({ fixedScope }: { fixedScope?: string }) {
     <>
       {fixedScope
         ? <PageHeader title="Chờ tôi duyệt" description="Kết quả cần đánh giá, yêu cầu gia hạn và việc giao cho đơn vị chưa tiếp nhận." />
-        : <PageHeader title="Công việc" description={access.isAdmin && !access.caps.isMember ? 'Bạn đang xem ở chế độ chỉ đọc (quản trị hệ thống).' : 'Việc được giao cho bạn và việc bạn quản lý.'} action={access.canCreate ? <ButtonLink to="/cong-viec/tao">+ Tạo công việc</ButtonLink> : undefined} />}
+        : <PageHeader title="Công việc" description={access.isAdmin && !access.caps.isMember ? 'Bạn đang xem ở chế độ chỉ đọc (quản trị hệ thống).' : 'Việc được giao cho bạn và việc bạn quản lý.'} action={access.canCreate ? (desk.mobile
+          ? <button type="button" className="button small secondary" onClick={() => desk.guard('Tạo công việc', () => navigate('/cong-viec/tao'))}>+ Tạo</button>
+          : <ButtonLink to="/cong-viec/tao">+ Tạo công việc</ButtonLink>) : undefined} />}
+      {desk.node}
       <div className="task-toolbar">
         {fixedScope ? null : (
           <div className="chips" role="navigation" aria-label="Nhóm công việc">
@@ -254,13 +355,21 @@ export function TaskListPage({ fixedScope }: { fixedScope?: string }) {
           </div>
         )}
         <SegLinks label="Kiểu xem" value={f.view} items={[['table', 'Bảng', link({ view: 'table' })], ['kanban', 'Kanban', link({ view: 'kanban' })], ['calendar', 'Lịch', link({ view: 'calendar' })]]} />
+        {/* Điện thoại: hai kiểu xem — danh sách và lịch (Kanban, bảng rộng dành cho máy tính). */}
+        {fixedScope ? null : <div className="m-only m-view-switch"><SegLinks label="Kiểu xem trên điện thoại" value={f.view === 'calendar' ? 'calendar' : 'table'} items={[['table', 'Danh sách', link({ view: 'table' })], ['calendar', 'Lịch', link({ view: 'calendar' })]]} /></div>}
       </div>
       <div className="task-filters" role="search">
         <label className="search-box"><span className="sr-only">Tìm công việc</span><input id="task-search" type="search" placeholder="Tìm theo tiêu đề, đơn vị, người nhận…" value={search} autoComplete="off" onChange={(e) => setSearch(e.target.value)} /></label>
+        <button type="button" className={`filter-toggle ${nActive ? 'has' : ''}`} aria-expanded={moreOpen} aria-controls="filter-more" onClick={() => setMoreOpen((o) => !o)}>
+          <Glyph name="filter" size={18} /><span>Bộ lọc</span>{nActive ? <b>{nActive}</b> : null}
+        </button>
+        <div id="filter-more" className={`filter-more ${moreOpen ? 'open' : ''}`}>
         <select id="filter-status" aria-label="Trạng thái" value={f.status} onChange={(e) => setFilter('status', e.target.value)}><Options items={Object.entries(STATUS).filter(([k]) => k !== '0' || f.scope === 'created').map(([k, [l]]) => [k, l])} placeholder="Mọi trạng thái" /></select>
         <select id="filter-cat" aria-label="Thể loại" value={f.cat} onChange={(e) => setFilter('cat', e.target.value)}><Options items={cats.map((c) => [c.id, c.name])} placeholder="Mọi thể loại" /></select>
         <select id="filter-prio" aria-label="Ưu tiên" value={f.prio} onChange={(e) => setFilter('prio', e.target.value)}><Options items={Object.entries(PRIORITY).map(([k, [l]]) => [k, l] as [string, string]).reverse()} placeholder="Mọi mức ưu tiên" /></select>
         {unitOptions.length > 1 ? <select id="filter-unit" aria-label="Đơn vị" value={f.unit} onChange={(e) => setFilter('unit', e.target.value)}><Options items={unitOptions} placeholder="Mọi đơn vị" /></select> : null}
+        {nActive ? <Link className="filter-clear" to={link({ status: '', cat: '', prio: '', unit: '' })} replace>Xóa bộ lọc</Link> : null}
+        </div>
         <Link className={`chip ${f.overdue ? 'on' : ''}`} data-tone="danger" to={link({ overdue: !f.overdue, soon: false })}>Quá hạn</Link>
         <Link className={`chip ${f.soon ? 'on' : ''}`} to={link({ soon: !f.soon, overdue: false })}>Sắp đến hạn</Link>
       </div>

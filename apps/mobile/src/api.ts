@@ -11,7 +11,7 @@ export class ApiError extends Error {
 
 export type SendResult<T> = { value: T; errors?: undefined } | { value?: undefined; errors: Record<string, string> };
 
-const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '';
+export const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '';
 const OFFLINE = 'Không kết nối được máy chủ. Kiểm tra API (NestJS) đang chạy rồi thử lại.';
 const listeners = new Set<() => void>();
 
@@ -66,6 +66,29 @@ async function parse<T>(response: Response, path: string): Promise<T> {
   if (response.status === 401 && path !== '/api/auth/login' && path !== '/api/auth/me') listeners.forEach((fn) => fn());
   if (response.status === 413) throw new ApiError(413, 'Tệp quá lớn. Mỗi tệp tối đa 20 MB.');
   throw new ApiError(response.status, p?.message || `Máy chủ trả lỗi ${response.status}.`, p?.errors ?? null);
+}
+
+/**
+ * Mở (xem) hoặc tải tệp đính kèm. Link thường không đi qua raw() nên không tự làm mới phiên
+ * (access token 15 phút) → kiểm phiên trước. Cửa sổ xem mở ngay lúc bấm (tránh bị chặn popup) rồi mới gán địa chỉ.
+ */
+export async function openFile(url: string, view: boolean): Promise<void> {
+  const win = view ? window.open('about:blank', '_blank') : null;
+  if (win) win.opener = null;
+  try {
+    if ((await raw('GET', '/api/auth/me')).status === 401) {
+      win?.close();
+      listeners.forEach((fn) => fn());
+      return;
+    }
+  } catch { /* mất kết nối: vẫn thử mở, trình duyệt sẽ báo lỗi */ }
+  if (win) { win.location.href = url; return; }
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 /** Gọi API; lỗi ném ApiError. */

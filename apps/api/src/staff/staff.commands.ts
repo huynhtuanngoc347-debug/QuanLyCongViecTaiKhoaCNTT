@@ -13,7 +13,7 @@ const PHONE = /^[0-9+().\s-]{6,20}$/;
 
 interface CleanPerson { name: string; email: string; academicTitle: string | null; degree: string | null; training: string | null; phone: string | null; isSystemAdmin: boolean; }
 
-function isValidEmail(email: string): boolean {
+export function isValidEmail(email: string): boolean {
   if (email.length < 3 || email.length > 254 || email.includes(' ')) return false;
   const at = email.indexOf('@');
   if (at <= 0 || at !== email.lastIndexOf('@')) return false;

@@ -6,7 +6,8 @@ import { DAY_MS, OFFSET_MS, addMonths, localText, nowUtc, parseVnDate, todayLoca
 import { TaskRights, loadRights, unitManagers } from './task-access';
 import * as P from './task-policy';
 import type { AssignmentRow, ExtensionRow, TaskRow } from './task-policy';
-import { N, UploadedFile, FILE_PREFIX, logHistory, markHandled, notify, safeFileName, tryDelete, validateFiles } from './task-support';
+import { N, UploadedFile, FILE_PREFIX, MAX_TASK_FILES, logHistory, markHandled, notify, safeFileName, tryDelete, validateFiles } from './task-support';
+import { offload, removeStored } from './file-store';
 import * as path from 'node:path';
 
 const NOT_FOUND_TASK = 'Không tìm thấy công việc hoặc bạn không có quyền xem.';
@@ -88,6 +89,35 @@ async function completeTask(db: SqlRunner, t: TaskRow, assignments: AssignmentRo
 }
 
 const declineTableReady = async (db: SqlRunner) => !!(await db.scalar<number>(`SELECT CASE WHEN ${P.HAS_DECLINE_TABLE} THEN 1 ELSE 0 END;`));
+
+/**
+ * Đánh dấu đã xử lý thông báo "xin từ chối" gửi người giao: thông báo của người vừa được giải quyết (nội dung bắt đầu
+ * bằng "<tên người xin>: ", như notify ở requestDecline/reject), và mọi thông báo loại này của người giao không còn yêu cầu
+ * nào đang chờ trên công việc. Không dùng markHandled: nó đóng cả thông báo của người khác xin từ chối cùng việc.
+ */
+const settleDeclineNotices = (db: SqlRunner, taskId: number, requesterName: string | null) =>
+  db.exec(
+    `IF ${P.HAS_DECLINE_TABLE}
+       UPDATE tb SET NgayXuLy = SYSUTCDATETIME(), DaDoc = 1,
+         NgayDoc = COALESCE(tb.NgayDoc, CASE WHEN SYSUTCDATETIME() >= tb.NgayTao THEN SYSUTCDATETIME() ELSE tb.NgayTao END)
+       FROM dbo.ThongBao AS tb
+       WHERE tb.MaCongViec = @taskId AND tb.LoaiThongBao = @type AND tb.CanXuLy = 1 AND tb.NgayXuLy IS NULL
+         AND ((@prefix IS NOT NULL AND LEFT(tb.NoiDung, LEN(@prefix)) = @prefix)
+           OR NOT EXISTS (SELECT 1 FROM dbo.YeuCauTuChoi AS y JOIN dbo.PhanCong AS p ON p.MaPhanCong = y.MaPhanCong
+                          WHERE p.MaCongViec = @taskId AND y.TrangThai = 0 AND p.MaNguoiGiao = tb.MaNguoiNhan));`,
+    { taskId, type: N.Accept, prefix: requesterName ? requesterName + ':' : null },
+  );
+
+/** Ghi yêu cầu xin từ chối (chờ người giao duyệt); mỗi phân công chỉ một yêu cầu đang chờ. */
+async function insertDeclineRequest(db: SqlRunner, userId: number, assignmentId: number, reason: string): Promise<Result<number>> {
+  const pending = await db.scalar<number>('SELECT COUNT(*) FROM dbo.YeuCauTuChoi WITH (UPDLOCK, HOLDLOCK) WHERE MaPhanCong = @assignmentId AND TrangThai = 0;', { assignmentId });
+  if (pending) return conflict('Đã có một yêu cầu xin từ chối đang chờ duyệt.');
+  return ok((await db.scalar<number>(
+    `INSERT dbo.YeuCauTuChoi (MaPhanCong, MaNguoiYeuCau, LyDo) VALUES (@assignmentId, @userId, @reason);
+     SELECT CONVERT(INT, SCOPE_IDENTITY());`,
+    { assignmentId, userId, reason },
+  ))!);
+}
 
 /** Đóng các yêu cầu xin từ chối còn chờ khi phân công/công việc bị hủy (bỏ qua nếu chưa chạy 04_XinTuChoi.sql). */
 const closePendingDeclines = (db: SqlRunner, userId: number, note: string, where: string, params: Record<string, unknown>) =>
@@ -333,6 +363,7 @@ export class TaskCommands {
             { taskId, userId },
           );
           await closePendingDeclines(db, userId, 'Công việc đã hủy.', 'MaPhanCong IN (SELECT MaPhanCong FROM dbo.PhanCong WHERE MaCongViec = @taskId)', { taskId });
+          await settleDeclineNotices(db, taskId, null);
           await setTaskStatus(db, taskId, P.Cancelled);
           await notify(db, recipients, taskId, N.System, 1, `Đã hủy: ${t.TieuDe}`, `Lý do: ${note}`, false, userId);
           break;
@@ -441,6 +472,9 @@ export class TaskCommands {
       if (a.TrangThaiPhanCong !== P.AsWaiting) return conflict('Phân công này đã được tiếp nhận hoặc đã đóng.');
       if (!P.isRunning(t)) return conflict('Công việc đang tạm dừng, đã xong hoặc đã hủy.');
       await db.exec('UPDATE dbo.PhanCong SET TrangThaiPhanCong = 1, NgayTiepNhan = SYSUTCDATETIME() WHERE MaPhanCong = @assignmentId;', { assignmentId });
+      // Đã xin từ chối nhận việc nhưng đổi ý tiếp nhận: đóng yêu cầu, người giao không phải duyệt nữa.
+      if (await closePendingDeclines(db, userId, 'Người nhận đã tiếp nhận việc.', 'MaPhanCong = @assignmentId', { assignmentId }))
+        await settleDeclineNotices(db, t.MaCongViec, rights.userName);
       await logHistory(db, t.MaCongViec, userId, 'TiepNhan', `${rights.userName} tiếp nhận${a.MaDonViNhan != null ? ` cho ${a.TenDonViNhan}` : ''}`);
       await notify(db, [a.MaNguoiGiao], t.MaCongViec, N.Accept, 0, `Đã tiếp nhận: ${t.TieuDe}`, `${rights.userName} đã tiếp nhận việc.`, false, userId);
       await markHandled(db, userId, t.MaCongViec, N.Assign);
@@ -449,6 +483,10 @@ export class TaskCommands {
     });
   }
 
+  /**
+   * Từ chối nhận việc (chưa tiếp nhận): gửi yêu cầu, người giao đồng ý thì phân công mới chuyển sang Từ chối.
+   * Chưa chạy sql/04_XinTuChoi.sql thì từ chối ngay như trước.
+   */
   reject(userId: number, assignmentId: number, input: Record<string, unknown>): Promise<Result<number>> {
     return this.db.tx(userId, async (db) => {
       const reason = clean(input.reason);
@@ -459,6 +497,15 @@ export class TaskCommands {
       const { rights, task: t, assignment: a } = c.value;
       if (!P.isAssignee(rights, a)) return forbidden('Chỉ người nhận việc được từ chối.');
       if (a.TrangThaiPhanCong !== P.AsWaiting) return conflict('Chỉ từ chối được khi chưa tiếp nhận.');
+      if (await declineTableReady(db)) {
+        if (!P.isRunning(t)) return conflict('Công việc đang tạm dừng, đã xong hoặc đã hủy.');
+        const r = await insertDeclineRequest(db, userId, assignmentId, reason);
+        if (r.kind !== 'ok') return r;
+        await logHistory(db, t.MaCongViec, userId, 'XinTuChoi', `${rights.userName} xin từ chối nhận việc. Lý do: ${reason}`);
+        await notify(db, [a.MaNguoiGiao], t.MaCongViec, N.Accept, 1, `Xin từ chối nhận việc: ${t.TieuDe}`, `${rights.userName}: ${reason}`, true, userId);
+        await markHandled(db, userId, t.MaCongViec, N.Assign);
+        return r;
+      }
       await db.exec('UPDATE dbo.PhanCong SET TrangThaiPhanCong = 5 WHERE MaPhanCong = @assignmentId;', { assignmentId });
       await logHistory(db, t.MaCongViec, userId, 'TuChoi', `${rights.userName} từ chối nhận việc. Lý do: ${reason}`);
       await notify(db, [a.MaNguoiGiao], t.MaCongViec, N.Accept, 1, `Từ chối nhận việc: ${t.TieuDe}`, `${rights.userName}: ${reason}`, true, userId);
@@ -625,11 +672,72 @@ export class TaskCommands {
         return ok(resultId);
       });
       if (result.kind !== 'ok') cleanup();
+      else await offload(files);
       return result;
     } catch (e) {
       cleanup();
       throw e;
     }
+  }
+
+  // ---------- Tệp đính kèm của công việc (tài liệu người giao gửi kèm) ----------
+  /** Thêm tệp vào công việc: người quản lý công việc (như quyền sửa). Tệp đã lưu tạm trước giao dịch; lỗi thì xóa tệp. */
+  async addTaskFiles(userId: number, taskId: number, files: UploadedFile[]): Promise<Result<number>> {
+    const cleanup = () => files.forEach((f) => tryDelete(f.path));
+    if (!files.length) return invalidField('files', 'Chọn ít nhất một tệp.');
+    const fileError = validateFiles(files);
+    if (fileError) { cleanup(); return invalidField('files', fileError); }
+    try {
+      const result = await this.db.tx(userId, async (db) => {
+        const rights = await loadRights(db, userId);
+        if (!rights) return unauthorized();
+        const t = await lockTask(db, taskId);
+        if (!t) return notFound(NOT_FOUND_TASK);
+        if (!P.canManage(rights, t)) return forbidden('Chỉ người tạo hoặc người có quyền giao việc ở đơn vị quản lý được đính kèm tệp cho công việc.');
+        if (t.TrangThai === P.Done || t.TrangThai === P.Cancelled) return conflict('Công việc đã hoàn thành hoặc đã hủy, không thêm tệp được.');
+        const existing = (await db.scalar<number>('SELECT COUNT(*) FROM dbo.TepDinhKem WHERE MaCongViec = @taskId;', { taskId }))!;
+        if (existing + files.length > MAX_TASK_FILES)
+          return invalidField('files', `Mỗi công việc tối đa ${MAX_TASK_FILES} tệp đính kèm (đang có ${existing}). Gỡ bớt tệp cũ trước.`);
+        for (const f of files) {
+          await db.exec(
+            `INSERT dbo.TepDinhKem (MaCongViec, MaNguoiTaiLen, TenTep, DuongDan, LoaiTep, KichThuoc)
+             VALUES (@taskId, @userId, @name, @path, @type, @size);`,
+            { taskId, userId, name: safeFileName(f.originalname), path: FILE_PREFIX + path.basename(f.path), type: cut(f.mimetype || '', 100), size: f.size },
+          );
+        }
+        const names = files.map((f) => `“${safeFileName(f.originalname)}”`).join(', ');
+        await logHistory(db, taskId, userId, 'DinhKemTep', `${rights.userName} đính kèm ${files.length} tệp: ${names}`);
+        return ok(files.length);
+      });
+      if (result.kind !== 'ok') cleanup();
+      else await offload(files);
+      return result;
+    } catch (e) {
+      cleanup();
+      throw e;
+    }
+  }
+
+  /** Gỡ một tệp đính kèm của công việc (không gỡ tệp kết quả / bình luận ở đây). Xóa nội dung trên đĩa sau khi ghi CSDL xong. */
+  async removeTaskFile(userId: number, fileId: number): Promise<Result<number>> {
+    let stored: string | null = null;
+    const result = await this.db.tx(userId, async (db) => {
+      const rights = await loadRights(db, userId);
+      if (!rights) return unauthorized();
+      const f = await db.one<{ MaCongViec: number | null; TenTep: string; DuongDan: string }>(
+        'SELECT MaCongViec, TenTep, DuongDan FROM dbo.TepDinhKem WITH (UPDLOCK, HOLDLOCK) WHERE MaTep = @fileId;', { fileId });
+      if (!f || f.MaCongViec == null) return notFound('Không tìm thấy tệp đính kèm của công việc.');
+      const t = await lockTask(db, f.MaCongViec);
+      if (!t) return notFound(NOT_FOUND_TASK);
+      if (!P.canManage(rights, t)) return forbidden('Chỉ người tạo hoặc người có quyền giao việc ở đơn vị quản lý được gỡ tệp của công việc.');
+      if (t.TrangThai === P.Done || t.TrangThai === P.Cancelled) return conflict('Công việc đã hoàn thành hoặc đã hủy, không gỡ tệp được.');
+      await db.exec('DELETE dbo.TepDinhKem WHERE MaTep = @fileId;', { fileId });
+      await logHistory(db, t.MaCongViec, userId, 'XoaTep', `${rights.userName} gỡ tệp “${f.TenTep}”`);
+      stored = f.DuongDan;
+      return ok(fileId);
+    });
+    if (result.kind === 'ok' && stored) await removeStored(stored);
+    return result;
   }
 
   evaluate(userId: number, resultId: number, input: Record<string, unknown>): Promise<Result<number>> {
@@ -778,7 +886,7 @@ export class TaskCommands {
   }
 
   // ---------- Xin từ chối (đã tiếp nhận) ----------
-  /** Người nhận đã tiếp nhận/đang làm xin thôi nhận việc; người giao duyệt. Chưa tiếp nhận thì dùng reject (từ chối ngay). */
+  /** Người nhận đã tiếp nhận/đang làm xin thôi nhận việc; người giao duyệt. Chưa tiếp nhận thì dùng reject (cũng chờ người giao duyệt). */
   requestDecline(userId: number, assignmentId: number, input: Record<string, unknown>): Promise<Result<number>> {
     return this.db.tx(userId, async (db) => {
       const reason = clean(input.reason);
@@ -789,19 +897,14 @@ export class TaskCommands {
       if (c.kind !== 'ok') return c as Result<never>;
       const { rights, task: t, assignment: a } = c.value;
       if (!P.isAssignee(rights, a)) return forbidden('Chỉ người nhận việc được xin từ chối.');
-      if (a.TrangThaiPhanCong === P.AsWaiting) return conflict('Việc chưa tiếp nhận: dùng nút “Từ chối” để từ chối ngay.');
+      if (a.TrangThaiPhanCong === P.AsWaiting) return conflict('Việc chưa tiếp nhận: dùng nút “Từ chối”.');
       if (a.TrangThaiPhanCong !== P.AsAccepted && a.TrangThaiPhanCong !== P.AsWorking) return conflict('Chỉ xin từ chối khi việc đang làm (chưa nộp kết quả).');
       if (!P.isRunning(t)) return conflict('Công việc đang tạm dừng, đã xong hoặc đã hủy.');
-      const pending = await db.scalar<number>('SELECT COUNT(*) FROM dbo.YeuCauTuChoi WITH (UPDLOCK, HOLDLOCK) WHERE MaPhanCong = @assignmentId AND TrangThai = 0;', { assignmentId });
-      if (pending) return conflict('Đã có một yêu cầu xin từ chối đang chờ duyệt.');
-      const id = (await db.scalar<number>(
-        `INSERT dbo.YeuCauTuChoi (MaPhanCong, MaNguoiYeuCau, LyDo) VALUES (@assignmentId, @userId, @reason);
-         SELECT CONVERT(INT, SCOPE_IDENTITY());`,
-        { assignmentId, userId, reason },
-      ))!;
+      const r = await insertDeclineRequest(db, userId, assignmentId, reason);
+      if (r.kind !== 'ok') return r;
       await logHistory(db, t.MaCongViec, userId, 'XinTuChoi', `${rights.userName} xin từ chối việc đã nhận. Lý do: ${reason}`);
       await notify(db, [a.MaNguoiGiao], t.MaCongViec, N.Accept, 1, `Xin từ chối việc: ${t.TieuDe}`, `${rights.userName}: ${reason}`, true, userId);
-      return ok(id);
+      return r;
     });
   }
 
@@ -826,7 +929,9 @@ export class TaskCommands {
       if (decision === 'reject' && !comment) return invalidField('comment', 'Nhập lý do không đồng ý để người nhận biết.');
       if (comment.length > 1000) return invalidField('comment', 'Nhận xét tối đa 1.000 ký tự.');
       const approve = decision === 'approve';
-      if (approve && a.TrangThaiPhanCong !== P.AsAccepted && a.TrangThaiPhanCong !== P.AsWorking)
+      // Xin từ chối khi chưa tiếp nhận: không đồng ý thì phân công chuyển sang Đã tiếp nhận (người nhận phải thực hiện).
+      const waiting = a.TrangThaiPhanCong === P.AsWaiting;
+      if (approve && !waiting && a.TrangThaiPhanCong !== P.AsAccepted && a.TrangThaiPhanCong !== P.AsWorking)
         return conflict('Người nhận đã nộp kết quả hoặc phân công đã đóng; không chuyển sang từ chối được nữa.');
       await db.exec(
         `UPDATE dbo.YeuCauTuChoi SET TrangThai = @status, MaNguoiDuyet = @userId, NhanXet = @comment, NgayDuyet = SYSUTCDATETIME()
@@ -840,14 +945,18 @@ export class TaskCommands {
            UPDATE dbo.PhanCong SET TrangThaiPhanCong = 5 WHERE MaPhanCong = @id;`,
           { id: req.MaPhanCong, userId },
         );
+      } else if (waiting) {
+        await db.exec('UPDATE dbo.PhanCong SET TrangThaiPhanCong = 1, NgayTiepNhan = SYSUTCDATETIME() WHERE MaPhanCong = @id;', { id: req.MaPhanCong });
       }
       const label = approve ? 'đồng ý' : 'không đồng ý';
-      await logHistory(db, t.MaCongViec, userId, 'DuyetTuChoi', `${rights.userName} ${label} cho ${req.TenNguoiYeuCau} từ chối việc${comment ? '. ' + comment : ''}`);
+      await logHistory(db, t.MaCongViec, userId, 'DuyetTuChoi',
+        `${rights.userName} ${label} cho ${req.TenNguoiYeuCau} từ chối ${waiting ? 'nhận ' : ''}việc${!approve && waiting ? ' (chuyển sang Đã tiếp nhận)' : ''}${comment ? '. ' + comment : ''}`);
       await notify(db, [req.MaNguoiYeuCau], t.MaCongViec, N.Accept, approve ? 0 : 1,
-        approve ? `Đã đồng ý cho thôi nhận việc: ${t.TieuDe}` : `Không đồng ý từ chối: ${t.TieuDe}`,
-        approve ? (comment || 'Bạn không còn phụ trách phân công này.') : `${comment} Bạn tiếp tục thực hiện công việc.`, false, userId);
-      await markHandled(db, userId, t.MaCongViec, N.Accept);
-      if (approve) await syncTask(db, t.MaCongViec);
+        approve ? `Đã đồng ý cho ${waiting ? 'từ chối nhận việc' : 'thôi nhận việc'}: ${t.TieuDe}` : `Không đồng ý từ chối: ${t.TieuDe}`,
+        approve ? (comment || 'Bạn không còn phụ trách phân công này.')
+          : `${comment} ${waiting ? 'Việc đã được chuyển sang Đã tiếp nhận; bạn' : 'Bạn'} tiếp tục thực hiện công việc.`, false, userId);
+      await settleDeclineNotices(db, t.MaCongViec, req.TenNguoiYeuCau);
+      await syncTask(db, t.MaCongViec);
       return ok(requestId);
     });
   }
@@ -870,6 +979,7 @@ export class TaskCommands {
         { assignmentId, userId },
       );
       await closePendingDeclines(db, userId, 'Phân công đã hủy.', 'MaPhanCong = @assignmentId', { assignmentId });
+      await settleDeclineNotices(db, t.MaCongViec, a.TenNguoiNhan);
       await logHistory(db, t.MaCongViec, userId, 'HuyPhanCong', `Hủy phân công của ${a.TenNguoiNhan ?? a.TenDonViNhan}. Lý do: ${reason}`);
       const recipients = a.MaNguoiNhan != null ? [a.MaNguoiNhan] : await unitManagers(db, a.MaDonViNhan!);
       await notify(db, recipients, t.MaCongViec, N.System, 1, `Đã hủy phân công: ${t.TieuDe}`, `Lý do: ${reason}`, false, userId);
@@ -911,6 +1021,7 @@ export class TaskCommands {
     try {
       const result = await this.commentTx(userId, taskId, input, content || '(Gửi tệp đính kèm)', files);
       if (result.kind !== 'ok') cleanup();
+      else await offload(files);
       return result;
     } catch (e) {
       cleanup();

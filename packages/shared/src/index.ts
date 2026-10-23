@@ -144,7 +144,11 @@ export interface AuditRowDto { id: number; action: string; objectType: string; o
 export interface CountItemDto { key: string; label: string; value: number; }
 export interface MonthItemDto { month: string; assigned: number; completed: number; }
 export interface UnitStatDto { unitId: number; unitName: string; total: number; open: number; completed: number; overdue: number; onTimePercent: number; }
-export interface PersonStatDto { personId: number; name: string; initials: string; unitName: string; assigned: number; completed: number; onTimePercent: number; overdue: number; passed: number; }
+export interface PersonStatDto {
+  personId: number; name: string; initials: string; unitName: string; assigned: number; completed: number; onTimePercent: number; overdue: number; passed: number;
+  /** Chi tiết (bảng "Theo nhân sự" và tệp Excel). assigned = 0: thành viên đơn vị trong phạm vi chưa có phân công cá nhân trong kỳ. */
+  lead: number; support: number; inProgress: number; waitingReview: number; late: number; needsWork: number; failed: number;
+}
 export interface UnitStatsDto {
   from: IsoDate; to: IsoDate; scopeLabel: string; total: number; open: number; completed: number; onTimePercent: number; onTimeCount: number;
   overdue: number; passed: number; needsWork: number; failed: number; byStatus: CountItemDto[]; byMonth: MonthItemDto[];

@@ -11,13 +11,16 @@ import { useTitle } from '../pages/common';
 import { hashOf, useCategories } from './queries';
 import { periodOf } from './period';
 import { Failed } from './TaskDetail';
+import { downloadXlsx } from './xlsx';
+import { statsSheets } from './statsExport';
+import { useShowMore } from '../ui/ShowMore';
 
 function PeriodBar({ path, extra }: { path: string; extra: Record<string, string> }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const p = periodOf(params);
   const [from, setFrom] = useState(p.from), [to, setTo] = useState(p.to);
-  // Đổi kỳ (Tháng này / Học kỳ / Năm học / Tùy chọn) thì hai ô ngày lấy lại giá trị của kỳ đang xem.
+  // Đổi kỳ (Tháng này / Năm học / Tùy chọn) thì hai ô ngày lấy lại giá trị của kỳ đang xem.
   useEffect(() => { setFrom(p.from); setTo(p.to); }, [p.from, p.to]);
   const invalid = !from || !to ? 'Chọn đủ ngày bắt đầu và ngày kết thúc.' : to < from ? 'Ngày kết thúc phải từ ngày bắt đầu trở đi.' : '';
   const apply = (e: React.FormEvent) => { e.preventDefault(); if (!invalid) navigate(hashOf(path, { ...extra, period: 'custom', from, to })); };
@@ -42,7 +45,8 @@ function PeriodBar({ path, extra }: { path: string; extra: Record<string, string
   );
 }
 
-const COLORS: Record<string, string> = { done: '#34c759', doing: '#0071e3', review: '#ff9500', new: '#aeaeb2', paused: '#af52de' };
+// Một màu dữ liệu (hoàn thành), cam cho việc cần duyệt, các trạng thái còn lại là bậc xám.
+const COLORS: Record<string, string> = { done: '#2563eb', doing: '#93b4f0', review: '#f59e0b', new: '#cbd5e1', paused: '#94a3b8' };
 function Donut({ items }: { items: CountItemDto[] }) {
   const total = items.reduce((s, x) => s + x.value, 0) || 1, R = 54, C = 2 * Math.PI * R;
   let off = 0;
@@ -84,26 +88,10 @@ function MonthBars({ months, labels = ['Được giao', 'Hoàn thành'] }: { mon
   );
 }
 
-function exportCsv(s: UnitStatsDto) {
-  const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const lines: unknown[][] = [
-    ['Thống kê công việc', s.scopeLabel], ['Kỳ', `${s.from} đến ${s.to}`], [], ['Tổng', s.total], ['Hoàn thành', s.completed], ['Đúng hạn (%)', s.onTimePercent],
-    ['Đang quá hạn', s.overdue], ['Đạt', s.passed], ['Cần bổ sung', s.needsWork], ['Không đạt', s.failed], [],
-    ['Đơn vị', 'Tổng', 'Đang mở', 'Hoàn thành', 'Quá hạn', 'Đúng hạn (%)'], ...s.byUnit.map((u) => [u.unitName, u.total, u.open, u.completed, u.overdue, u.onTimePercent]), [],
-    ['Người thực hiện', 'Đơn vị', 'Được giao', 'Hoàn thành', 'Đúng hạn (%)', 'Quá hạn', 'Đạt'], ...s.byPerson.map((x) => [x.name, x.unitName, x.assigned, x.completed, x.onTimePercent, x.overdue, x.passed]),
-  ];
-  const blob = new Blob(['﻿' + lines.map((l) => l.map(q).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `thong-ke-cong-viec-${s.from}-${s.to}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-}
-
 /** Bảng "Theo nhân sự": tìm một người cụ thể (tên, email, đơn vị), sắp xếp, mở thống kê chi tiết. */
 const PERSON_SORT: [string, string][] = [['name', 'Tên A–Z'], ['overdue', 'Quá hạn nhiều nhất'], ['assigned', 'Được giao nhiều nhất'], ['ontime', 'Đúng hạn thấp nhất']];
 function PersonStats({ people }: { people: PersonStatDto[] }) {
+  const page = useShowMore(8);
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { org } = useSession();
@@ -129,7 +117,7 @@ function PersonStats({ people }: { people: PersonStatDto[] }) {
   return (
     <section className="card table-card" aria-labelledby="person-stats-title">
       <div className="card-head person-stats-head">
-        <div><h3 id="person-stats-title">Theo nhân sự</h3><p className="muted small">Chỉ tính phân công cá nhân trong kỳ · bấm tên để xem thống kê của người đó</p></div>
+        <div><h3 id="person-stats-title">Theo nhân sự</h3><p className="muted small">Phân công cá nhân trong kỳ · bấm tên để xem chi tiết</p></div>
         <div className="person-stats-tools" role="search">
           <label className="search-box"><span className="sr-only">Tìm nhân sự</span>
             <input type="search" id="person-search" placeholder="Tìm theo tên, email hoặc đơn vị…" value={search} autoComplete="off"
@@ -148,16 +136,17 @@ function PersonStats({ people }: { people: PersonStatDto[] }) {
             </div>
           ) : null}
           {shown.length ? (
-            <div className="table-wrap"><table className="m-cards"><thead><tr><th>Người thực hiện</th><th>Được giao</th><th>Hoàn thành</th><th>Đúng hạn</th><th>Quá hạn</th><th>Đánh giá Đạt</th></tr></thead><tbody>
-              {shown.map((x) => (
+            <div className="table-wrap"><table className="m-cards m-compact" style={{ '--n': 5 } as React.CSSProperties}><thead><tr><th>Người thực hiện</th><th>Được giao</th><th>Hoàn thành</th><th>Đúng hạn</th><th>Quá hạn</th><th>Đánh giá Đạt</th></tr></thead><tbody>
+              {page.take(shown).map((x) => (
                 <tr key={x.personId} className={only ? 'row-picked' : ''}>
-                  <td><Link className="pick-who" to={detail(x.personId)}><Avatar initials={x.initials} tone={x.personId} /><span><strong>{x.name}</strong><small className="muted">{x.unitName}{email(x.personId) ? ` · ${email(x.personId)}` : ''}</small></span></Link></td>
+                  <td><Link className="pick-who" to={detail(x.personId)}><Avatar initials={x.initials} tone={x.personId} /><span><strong>{x.name}</strong><small className="muted">{x.unitName}</small></span></Link></td>
                   <td data-label="Được giao">{x.assigned}</td><td data-label="Hoàn thành">{x.completed}</td><td data-label="Đúng hạn">{x.completed ? <b className={x.onTimePercent >= 85 ? 'green' : 'orange'}>{x.onTimePercent}%</b> : '—'}</td>
                   <td data-label="Quá hạn">{x.overdue ? <b className="red">{x.overdue}</b> : <span className="muted">0</span>}</td><td data-label="Đạt">{x.passed}</td>
                 </tr>
               ))}
             </tbody></table></div>
           ) : null}
+          {page.more(shown.length)}
         </>
       ) : <Empty title="Chưa có phân công cá nhân" />}
     </section>
@@ -185,10 +174,10 @@ export function UnitStatsPage() {
   return (
     <>
       <div className="detail-title stats-head">
-        <div><h1 tabIndex={-1} id="page-title">Thống kê công việc</h1><p className="muted">{s?.scopeLabel ?? 'Trong phạm vi bạn được xem'} · {ymdText(p.from)} – {ymdText(p.to)}</p><p className="muted small stats-note">Tính các công việc còn hoạt động trong kỳ (tạo trước ngày kết thúc, chưa xong trước ngày bắt đầu); lượt đánh giá tính theo ngày duyệt trong kỳ.</p></div>
+        <div><h1 tabIndex={-1} id="page-title">Thống kê công việc</h1><p className="muted">{s?.scopeLabel ?? 'Trong phạm vi bạn được xem'} · {ymdText(p.from)} – {ymdText(p.to)}</p><details className="stats-note"><summary>Cách tính</summary><ul><li>Tính các công việc còn hoạt động trong kỳ: tạo trước ngày kết thúc, chưa xong trước ngày bắt đầu.</li><li>Lượt đánh giá tính theo ngày duyệt trong kỳ.</li></ul></details></div>
         <div className="actions">
           {access.caps.isMember ? <SegLinks label="Phạm vi" value="unit" items={[['unit', 'Đơn vị', '/thong-ke'], ['me', 'Của tôi', '/thong-ke-ca-nhan']]} /> : null}
-          {s ? <button className="button secondary m-hide" onClick={() => exportCsv(s)}>Xuất CSV (Excel)</button> : null}
+          {s ? <button className="button secondary m-hide" onClick={() => downloadXlsx(`thong-ke-cong-viec-${s.from}-${s.to}.xlsx`, statsSheets(s))}>Xuất Excel</button> : null}
         </div>
       </div>
       <div className="task-filters">
@@ -208,12 +197,12 @@ export function UnitStatsPage() {
           </div>
           <div className="stats-grid">
             <section className="card card-pad stack"><h3>Theo trạng thái</h3><p className="muted small">{s.total} công việc trong kỳ</p><Donut items={s.byStatus} /></section>
-            <section className="card card-pad stack"><h3>Tạo và hoàn thành theo tháng</h3><p className="muted small">Số công việc tạo mới so với số đã hoàn thành</p><MonthBars months={s.byMonth} labels={['Tạo mới', 'Hoàn thành']} /></section>
+            <section className="card card-pad stack"><h3>Tạo và hoàn thành theo tháng</h3><MonthBars months={s.byMonth} labels={['Tạo mới', 'Hoàn thành']} /></section>
           </div>
           <section className="card table-card">
-            <div className="card-head"><h3>Theo đơn vị</h3><p className="muted small">Bấm tên đơn vị để mở danh sách công việc đã lọc</p></div>
+            <div className="card-head"><h3>Theo đơn vị</h3><p className="muted small">Bấm tên đơn vị để xem danh sách công việc</p></div>
             {s.byUnit.length ? (
-              <div className="table-wrap"><table className="m-cards"><thead><tr><th>Đơn vị</th><th>Tổng</th><th>Đang mở</th><th>Hoàn thành</th><th>Quá hạn</th><th>Tỷ lệ đúng hạn</th></tr></thead><tbody>
+              <div className="table-wrap"><table className="m-cards m-compact" style={{ '--n': 5 } as React.CSSProperties}><thead><tr><th>Đơn vị</th><th>Tổng</th><th>Đang mở</th><th>Hoàn thành</th><th>Quá hạn</th><th>Tỷ lệ đúng hạn</th></tr></thead><tbody>
                 {s.byUnit.map((u) => (
                   <tr key={u.unitId}>
                     <td><Link className="task-title" to={listLink({ unit: u.unitId })}>{u.unitName} ›</Link></td><td data-label="Tổng">{u.total}</td><td data-label="Đang mở">{u.open}</td><td data-label="Hoàn thành">{u.completed}</td>
@@ -293,8 +282,8 @@ export function PersonalStatsPage() {
         <Kpi label="Đánh giá Đạt" value={s.passed} note={`${s.needsWork} lần cần bổ sung · ${s.extensions} lần xin gia hạn`} />
       </div>
       <div className="stats-grid">
-        <section className="card card-pad stack"><h3>Theo tháng</h3><p className="muted small">Việc được giao và đã hoàn thành</p><MonthBars months={s.byMonth} /></section>
-        <section className="card card-pad stack"><h3>Theo thể loại</h3><p className="muted small">{s.assigned} việc được giao trong kỳ</p>
+        <section className="card card-pad stack"><h3>Theo tháng</h3><MonthBars months={s.byMonth} /></section>
+        <section className="card card-pad stack"><h3>Theo thể loại</h3>
           {s.byCategory.length ? <div className="hbars">{s.byCategory.map((c) => <div key={c.key} className="hbar"><span>{c.label}</span><Bar value={(100 * c.value) / maxCat} /><b>{c.value}</b></div>)}</div> : <p className="muted">Chưa có dữ liệu.</p>}
         </section>
       </div>

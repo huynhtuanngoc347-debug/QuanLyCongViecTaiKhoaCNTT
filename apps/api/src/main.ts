@@ -5,10 +5,10 @@ import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
-import type { NextFunction, Request, Response } from 'express';
 import { AppModule, CUSTOM_UNIT_TYPE_SQL, TASK_MODULE_SQL } from './app.module';
 import { appConfig } from './config';
 import { securityHeaders } from './common/security-headers';
+import { mobileRedirect } from './common/mobile-redirect';
 import { DbService } from './db/db.service';
 
 async function bootstrap(): Promise<void> {
@@ -24,11 +24,8 @@ async function bootstrap(): Promise<void> {
   }
   // Phục vụ luôn giao diện React đã build (cùng origin → cookie SameSite=Strict hoạt động).
   // App di động (apps/mobile) tại /m/ — đăng ký trước giao diện máy tính để không bị thư mục gốc che.
-  if (fs.existsSync(path.join(appConfig.mobileDist, 'index.html'))) {
-    app.useStaticAssets(appConfig.mobileDist, { prefix: '/m/', index: 'index.html', maxAge: '1h', setHeaders: (res, file) => { if (!/[\\/]assets[\\/]/.test(file)) res.setHeader('Cache-Control', 'no-cache'); } });
-    app.use('/m', (req: Request, res: Response, next: NextFunction) => (req.method === 'GET' && req.path === '/' && !req.originalUrl.startsWith('/m/') ? res.redirect(301, '/m/') : next()));
-    logger.log(`Phục vụ app di động tại /m/ từ ${appConfig.mobileDist}`);
-  }
+  // Điện thoại dùng bản web; đường dẫn /m/... cũ chuyển sang trang tương ứng của bản web (xem common/mobile-redirect.ts).
+  app.use('/m', mobileRedirect);
   if (fs.existsSync(path.join(appConfig.webDist, 'index.html'))) {
     app.useStaticAssets(appConfig.webDist, { index: 'index.html', maxAge: '1h', setHeaders: (res, file) => { if (!/[\\/]assets[\\/]/.test(file)) res.setHeader('Cache-Control', 'no-cache'); } }); // chỉ assets/ có mã băm trong tên; còn lại (index.html, styles.css...) phải kiểm tra lại mỗi lần
     logger.log(`Phục vụ giao diện từ ${appConfig.webDist}`);

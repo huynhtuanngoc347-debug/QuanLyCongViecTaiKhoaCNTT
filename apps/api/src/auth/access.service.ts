@@ -87,9 +87,11 @@ export async function portals(db: SqlRunner, user: PersonRow): Promise<PortalDto
     const leader = (r: { TenChucVu: string; LoaiDonVi: string }) =>
       (normalize(r.TenChucVu) === 'truong khoa' && r.LoaiDonVi === 'Khoa') || DEPARTMENT_HEAD_ROLES.includes(normalize(r.TenChucVu));
     const ordered = [...roles.filter(leader), ...roles.filter((r) => !leader(r))];
+    // "Thành viên" chỉ là tư cách chung — bỏ khi đã có chức vụ cụ thể
+    const named = ordered.filter((r) => normalize(r.TenChucVu) !== 'thanh vien');
     result.push({
       key: 'ca-nhan',
-      roleLabel: roles.length > 0 ? distinct(ordered.map((r) => r.TenChucVu)).join(', ') : 'Người dùng',
+      roleLabel: roles.length > 0 ? distinct((named.length ? named : ordered).map((r) => r.TenChucVu)).join(', ') : 'Người dùng',
       title: 'Trang cá nhân',
       scope: roles.length > 0 ? distinct(ordered.map((r) => r.TenDonVi)).join(', ') : 'Chưa thuộc đơn vị nào',
     });

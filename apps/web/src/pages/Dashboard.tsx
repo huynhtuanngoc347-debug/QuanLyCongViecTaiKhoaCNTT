@@ -1,40 +1,40 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { TaskSummaryDto, UnitStatsDto } from '@khoa/shared';
 import { get } from '../api/client';
 import { useAccess } from '../nav';
 import { Avatar, Avatars, Badge, Bar, Empty, Loading, Prio, ROLE, STATUS } from '../ui/ui';
-import { Glyph, type GlyphName } from '../ui/glyph';
+import { Glyph } from '../ui/glyph';
 import { useTaskList } from '../tasks/queries';
 import { useTaskActions } from '../tasks/dialogs';
 import { periodOf } from '../tasks/period';
+import { useIsMobile } from '../ui/useIsMobile';
 import { DAY, addDaysIso, dueInfo, fmtShort, isoDay, pct, todayIso, toDate } from '../format';
 
 /**
  * Bảng điều khiển công việc (trang theo vai trò). Thứ tự ưu tiên:
- * 1 Tổng quan → 2 Cần chú ý → 3 Tiến độ & trạng thái → 4 Giao việc → 5 Thống kê & đánh giá.
+ * Tổng quan → Cần chú ý → Tiến độ & trạng thái → Giao việc → Thống kê & đánh giá.
  * Chỉ đọc dữ liệu có sẵn (danh sách công việc, thống kê); mọi thao tác đi qua hộp thoại cũ.
  */
 type Mode = 'manager' | 'member';
 const OPEN = [1, 2, 3, 5];
 const dueMs = (t: TaskSummaryDto) => (t.myDue || t.due ? toDate((t.myDue || t.due)!).getTime() : Number.MAX_SAFE_INTEGER);
 
-function SectionHead({ n, icon, title, sub, action }: { n: number; icon: GlyphName; title: string; sub?: string; action?: ReactNode }) {
+function SectionHead({ title, sub, action }: { title: string; sub?: string; action?: ReactNode }) {
   return (
     <header className="dash-head">
-      <span className="dash-head-ico" aria-hidden="true"><Glyph name={icon} size={17} /></span>
-      <div><h2><span className="dash-step">{n}</span>{title}</h2>{sub ? <p className="muted small">{sub}</p> : null}</div>
+      <div><h2>{title}</h2>{sub ? <p className="muted small">{sub}</p> : null}</div>
       {action ? <div className="dash-head-action">{action}</div> : null}
     </header>
   );
 }
 
 // ---------------- 1. Tổng quan ----------------
-export function StatTile({ icon, label, value, note, tone, to }: { icon: GlyphName; label: string; value: number | string; note: string; tone: string; to: string }) {
+/** Một chỉ số: nhãn trên, số dưới; màu chỉ nằm trên số khi cần chú ý (quá hạn, sắp đến hạn). */
+export function StatTile({ label, value, note, tone, to }: { label: string; value: number | string; note: string; tone: string; to: string }) {
   return (
     <Link className={`stat-tile tone-${tone}`} to={to}>
-      <span className="stat-ico"><Glyph name={icon} size={20} /></span>
       <span className="stat-body"><small>{label}</small><b>{value}</b><span>{note}</span></span>
     </Link>
   );
@@ -47,11 +47,11 @@ function Overview({ items, base }: { items: TaskSummaryDto[]; base: string }) {
   const done = items.filter((t) => t.status === 4).length;
   return (
     <div className="stat-grid">
-      <StatTile icon="layers" label="Tổng công việc" value={items.length} note={`${open.length} đang mở`} tone="primary" to={base} />
-      <StatTile icon="play" label="Đang thực hiện" value={doing} note={`${notStarted} chưa bắt đầu`} tone="blue" to={`${base}&status=2`} />
-      <StatTile icon="clock" label="Sắp đến hạn" value={soon} note="trong 3 ngày tới" tone={soon ? 'amber' : 'neutral'} to={`${base}&soon=1`} />
-      <StatTile icon="alert" label="Quá hạn" value={overdue} note={overdue ? 'cần xử lý ngay' : 'không có việc trễ'} tone={overdue ? 'red' : 'neutral'} to={`${base}&overdue=1`} />
-      <StatTile icon="check" label="Hoàn thành" value={done} note={`${items.length ? Math.round((100 * done) / items.length) : 0}% tổng số`} tone="green" to={`${base}&status=4`} />
+      <StatTile label="Tổng công việc" value={items.length} note={`${open.length} đang mở`} tone="primary" to={base} />
+      <StatTile label="Đang thực hiện" value={doing} note={`${notStarted} chưa bắt đầu`} tone="blue" to={`${base}&status=2`} />
+      <StatTile label="Sắp đến hạn" value={soon} note="trong 3 ngày tới" tone={soon ? 'amber' : 'neutral'} to={`${base}&soon=1`} />
+      <StatTile label="Quá hạn" value={overdue} note={overdue ? 'cần xử lý ngay' : 'không có việc trễ'} tone={overdue ? 'red' : 'neutral'} to={`${base}&overdue=1`} />
+      <StatTile label="Hoàn thành" value={done} note={`${items.length ? Math.round((100 * done) / items.length) : 0}% tổng số`} tone="green" to={`${base}&status=4`} />
     </div>
   );
 }
@@ -72,7 +72,8 @@ function RowAction({ t }: { t: TaskSummaryDto }) {
   if (t.pendingReviews > 0) return <Link className="button small" to={`/cong-viec/chi-tiet?id=${t.id}&tab=result`}>Đánh giá</Link>;
   if (t.myAssignmentId && running && t.myAssignmentStatus === 0) return <button className="button small" onClick={() => void actions.accept(t.id, t.myAssignmentId!)}>Tiếp nhận</button>;
   if (t.myAssignmentId && running && (t.myAssignmentStatus === 1 || t.myAssignmentStatus === 2)) return <button className="button small" onClick={() => actions.open({ kind: 'progress', taskId: t.id, assignmentId: t.myAssignmentId! })}>Cập nhật tiến độ</button>;
-  return <Link className="button small secondary" to={`/cong-viec/chi-tiet?id=${t.id}`}>Xem chi tiết</Link>;
+  // Không có thao tác cần làm: tên việc đã là liên kết mở chi tiết, không thêm nút "Xem chi tiết" lặp lại.
+  return null;
 }
 
 function TaskRow({ t, mode }: { t: TaskSummaryDto; mode: Mode }) {
@@ -100,23 +101,31 @@ function TaskRow({ t, mode }: { t: TaskSummaryDto; mode: Mode }) {
   );
 }
 
+const attentionOf = (items: TaskSummaryDto[]) =>
+  items.filter((t) => t.status !== 4 && t.status !== 6 && rankOf(t) < 9).sort((a, b) => rankOf(a) - rankOf(b) || dueMs(a) - dueMs(b));
+const attentionLimit = (mobile: boolean) => (mobile ? 4 : 6);
+
 function Attention({ items, mode, base }: { items: TaskSummaryDto[]; mode: Mode; base: string }) {
-  const list = items.filter((t) => t.status !== 4 && t.status !== 6 && rankOf(t) < 9).sort((a, b) => rankOf(a) - rankOf(b) || dueMs(a) - dueMs(b));
+  const mobile = useIsMobile();
+  const list = attentionOf(items);
   return (
     <section className="card dash-card">
       <div className="dash-card-head">
-        <h3>Công việc cần chú ý <span className="count">{list.length}</span></h3>
+        <h3>Việc cần xử lý <span className="count">{list.length}</span></h3>
         <Link className="link-button" to={`${base}&soon=1`}>Xem tất cả <Glyph name="arrow" size={14} /></Link>
       </div>
-      {list.length ? <div className="task-rows">{list.slice(0, 6).map((t) => <TaskRow key={t.id} t={t} mode={mode} />)}</div>
+      {list.length ? <div className="task-rows">{list.slice(0, attentionLimit(mobile)).map((t) => <TaskRow key={t.id} t={t} mode={mode} />)}</div>
         : <div className="dash-empty"><Glyph name="check" size={28} /><strong>Không có việc trễ hay sắp đến hạn</strong><span className="muted small">Mọi công việc đang trong tầm kiểm soát.</span></div>}
     </section>
   );
 }
 
 function Upcoming({ items }: { items: TaskSummaryDto[] }) {
+  const mobile = useIsMobile();
   const today = todayIso(), end = addDaysIso(today, 14);
-  const list = items.filter((t) => [1, 2].includes(t.status) && !t.overdue && (t.myDue || t.due) && isoDay(t.myDue || t.due) <= end).sort((a, b) => dueMs(a) - dueMs(b)).slice(0, 7);
+  // Việc đang hiện ở "Việc cần xử lý" ngay bên cạnh thì không lặp lại ở đây.
+  const shown = new Set(attentionOf(items).slice(0, attentionLimit(mobile)).map((t) => t.id));
+  const list = items.filter((t) => !shown.has(t.id) && [1, 2].includes(t.status) && !t.overdue && (t.myDue || t.due) && isoDay(t.myDue || t.due) <= end).sort((a, b) => dueMs(a) - dueMs(b)).slice(0, 7);
   const label = (iso: string) => (iso === today ? 'Hôm nay' : iso === addDaysIso(today, 1) ? 'Ngày mai' : `${toDate(iso + 'T12:00:00Z').toLocaleDateString('vi-VN', { weekday: 'long' })}, ${fmtShort(iso + 'T12:00:00Z')}`);
   let last = '';
   return (
@@ -238,7 +247,7 @@ function WorkloadCard({ items, base, canAssign }: { items: TaskSummaryDto[]; bas
           {list.map((p) => (
             <li key={`${p.unit}-${p.id}`}>
               <Avatar initials={p.initials} tone={p.id} />
-              <span className="workload-name"><strong>{p.name}</strong><small className="muted">{p.unit ? 'Đơn vị nhận việc' : 'Cá nhân'}{p.review ? ` · ${p.review} chờ duyệt` : ''}</small></span>
+              <span className="workload-name"><strong>{p.name}</strong>{p.unit || p.review ? <small className="muted">{[p.unit ? 'Đơn vị nhận việc' : '', p.review ? `${p.review} chờ duyệt` : ''].filter(Boolean).join(' · ')}</small> : null}</span>
               <span className="workload-bar"><span className="bar"><b style={{ width: `${(100 * p.open) / max}%` }} /></span></span>
               <span className="workload-num"><b>{p.open}</b> việc{p.overdue ? <span className="flag flag-red">{p.overdue} trễ</span> : null}</span>
             </li>
@@ -291,7 +300,7 @@ export function EvaluationCard() {
   const top = [...s.byPerson].filter((x) => x.completed).sort((a, b) => b.completed - a.completed || b.onTimePercent - a.onTimePercent).slice(0, 4);
   return (
     <section className="card dash-card eval-card">
-      <div className="dash-card-head"><h3>Hiệu quả thực hiện</h3><span className="muted small">{p.presets[p.preset as 'semester']?.[2] ?? 'Kỳ hiện tại'} · {s.scopeLabel}</span></div>
+      <div className="dash-card-head"><h3>Hiệu quả thực hiện</h3><span className="muted small">{p.presets[p.preset as 'year']?.[2] ?? 'Kỳ hiện tại'} · {s.scopeLabel}</span></div>
       <div className="eval-grid">
         <div className="eval-block">
           <div className="progress-hero">
@@ -321,7 +330,7 @@ export function EvaluationCard() {
           {top.length ? (
             <ul className="workload compact">
               {top.map((x, i) => (
-                <li key={x.personId}><span className="rank">{i + 1}</span><Avatar initials={x.initials} tone={x.personId} /><span className="workload-name"><strong>{x.name}</strong><small className="muted">{x.unitName}</small></span><span className="workload-num"><b>{x.completed}</b> xong · {x.onTimePercent}% đúng hạn</span></li>
+                <li key={x.personId}><span className="rank">{i + 1}</span><Avatar initials={x.initials} tone={x.personId} /><span className="workload-name"><strong>{x.name}</strong><small className="muted">{x.unitName}</small></span><span className="workload-num stacked"><span><b>{x.completed}</b> xong</span><small>{x.onTimePercent}% đúng hạn</small></span></li>
               ))}
             </ul>
           ) : <p className="muted small">Chưa có việc hoàn thành trong kỳ.</p>}
@@ -333,37 +342,60 @@ export function EvaluationCard() {
 }
 
 // ---------------- Bảng điều khiển ----------------
+/**
+ * Khu vực phân tích (3–5) trên điện thoại: thu gọn mặc định để "Cần chú ý" nằm trong tầm nhìn;
+ * bấm tiêu đề để mở. Trạng thái mở/đóng ghi nhớ trên trình duyệt này. Máy tính luôn mở.
+ */
+const FOLD_KEY = 'khoa.dashFold';
+function readFold(): Record<string, boolean> { try { return JSON.parse(localStorage.getItem(FOLD_KEY) || '{}'); } catch { return {}; } }
+function Fold({ id, mobile, head, children }: { id: string; mobile: boolean; head: { title: string; sub?: string; action?: ReactNode }; children: ReactNode }) {
+  const [open, setOpen] = useState(() => readFold()[id] === true);
+  if (!mobile) return <section className="dash-section"><SectionHead {...head} />{children}</section>;
+  const toggle = () => {
+    const next = !open; setOpen(next);
+    try { localStorage.setItem(FOLD_KEY, JSON.stringify({ ...readFold(), [id]: next })); } catch { /* trình duyệt chặn lưu trữ: bỏ qua */ }
+  };
+  return (
+    <section className={`dash-section dash-fold ${open ? 'open' : ''}`}>
+      <button type="button" className="dash-fold-head" aria-expanded={open} aria-controls={`fold-${id}`} onClick={toggle}>
+        <span className="dash-fold-text"><b>{head.title}</b>{head.sub ? <small>{head.sub}</small> : null}</span>
+        <Glyph name="chevronDown" size={20} className="dash-fold-caret" />
+      </button>
+      {open ? <div id={`fold-${id}`} className="dash-fold-body">{children}</div> : null}
+    </section>
+  );
+}
+
 export function Dashboard({ mode, evaluation }: { mode: Mode; evaluation?: ReactNode }) {
   const access = useAccess();
   const scope = mode === 'member' ? 'assigned' : access.isAdmin || access.viewUnitIds.length ? 'all' : 'created';
   const list = useTaskList(scope);
   const base = `/cong-viec?scope=${scope}`;
+  const mobile = useIsMobile();
   if (!list.data) return list.error ? <div className="card card-pad" role="alert"><p>{(list.error as Error).message}</p></div> : <Loading title="Đang tải công việc…" />;
   const items = list.data.items.filter((t) => t.status !== 0 && t.status !== 6);
   const scopeText = scope === 'all' ? 'Toàn bộ công việc trong phạm vi bạn quản lý' : scope === 'created' ? 'Công việc bạn đã tạo hoặc giao' : 'Công việc được giao cho bạn';
   return (
     <div className="dash">
       <section className="dash-section">
-        <SectionHead n={1} icon="layers" title="Tổng quan công việc" sub={scopeText} />
+        <SectionHead title="Tổng quan công việc" sub={mobile ? undefined : scopeText} />
         <Overview items={items} base={base} />
       </section>
       <section className="dash-section">
-        <SectionHead n={2} icon="alert" title="Cần chú ý" sub="Quá hạn, sắp đến hạn, chờ duyệt và chờ tiếp nhận" />
+        {/* Điện thoại: thẻ bên dưới đã có tiêu đề "Việc cần xử lý" — bỏ tiêu đề mục để không lặp. */}
+        {mobile ? null : <SectionHead title="Cần chú ý" />}
         <div className="dash-grid wide-left"><Attention items={items} mode={mode} base={base} /><Upcoming items={items} /></div>
       </section>
-      <section className="dash-section">
-        <SectionHead n={3} icon="progress" title="Tiến độ & trạng thái" />
+      <Fold id="progress" mobile={mobile} head={{ title: 'Tiến độ & trạng thái' }}>
         <div className="dash-grid two"><StatusCard items={items} base={base} /><GroupsCard items={items} base={base} /></div>
-      </section>
-      <section className="dash-section">
-        <SectionHead n={4} icon="assign" title="Giao việc" sub={mode === 'manager' ? 'Ai đang phụ trách, ai đang quá tải' : 'Vai trò của bạn trong các công việc'}
-          action={mode === 'manager' && access.canCreate ? <Link className="button small secondary" to="/cong-viec/tao"><Glyph name="plus" size={15} />Tạo và giao việc</Link> : undefined} />
+      </Fold>
+      <Fold id="assign" mobile={mobile} head={{ title: mode === 'manager' ? 'Giao việc' : 'Vai trò của tôi',
+        action: mode === 'manager' && access.canCreate ? <Link className="button small secondary m-hide" to="/cong-viec/tao"><Glyph name="plus" size={15} />Tạo và giao việc</Link> : undefined }}>
         {mode === 'manager' ? <WorkloadCard items={items} base={base} canAssign={access.canAssignAny} /> : <MyAssignmentCard items={items} />}
-      </section>
-      <section className="dash-section">
-        <SectionHead n={5} icon="award" title="Thống kê & đánh giá" sub={mode === 'manager' ? 'Tỷ lệ đúng hạn và kết quả duyệt trong kỳ' : 'Kết quả thực hiện của bạn'} />
+      </Fold>
+      <Fold id="eval" mobile={mobile} head={{ title: 'Thống kê & đánh giá' }}>
         {mode === 'manager' && access.canViewUnitStats ? <EvaluationCard /> : evaluation}
-      </section>
+      </Fold>
     </div>
   );
 }

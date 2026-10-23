@@ -21,12 +21,27 @@ function Brand() {
   );
 }
 
+/** Ứng dụng điện thoại chỉ dành cho người giao việc / nhận việc; tài khoản chỉ có vai trò quản trị dùng bản máy tính. */
+function AdminOnDesktop() {
+  const { logout } = useSession();
+  return (
+    <div className="flex min-h-dvh flex-col justify-center px-6 pb-10 pt-[max(48px,env(safe-area-inset-top))]">
+      <Brand />
+      <h1 className="mt-10 text-[24px] font-extrabold leading-tight">Quản trị dùng trên máy tính</h1>
+      <p className="mt-3 text-[14px] leading-6 text-slate-500">Bản điện thoại dành cho người giao việc và người nhận việc. Tài khoản quản trị hệ thống vui lòng đăng nhập trên máy tính.</p>
+      <button className={`${button} mt-8 w-full`} onClick={() => void logout()}>Đăng xuất</button>
+    </div>
+  );
+}
+
 function Layout() {
-  const { session, canReview } = useSession();
+  const { session, canReview, canCreate, isMember } = useSession();
   const loc = useLocation();
-  const unread = useNotifications(!!session).data?.unread ?? 0;
-  const review = useTaskList('review', !!session && canReview).data?.counts.review ?? 0;
+  const adminOnly = !!session?.user.isSystemAdmin && !isMember && !canCreate && !canReview && !(session.tasks.assignUnitIds.length > 0);
+  const unread = useNotifications(!!session && !adminOnly).data?.unread ?? 0;
+  const review = useTaskList('review', !!session && canReview && !adminOnly).data?.counts.review ?? 0;
   if (!session) return <Navigate to="/login" replace state={{ from: loc.pathname + loc.search }} />;
+  if (adminOnly) return <AdminOnDesktop />;
   const tabs = [
     { to: '/', icon: Home, label: 'Trang chủ', badge: 0 },
     { to: '/tasks', icon: ListTodo, label: 'Công việc', badge: review },

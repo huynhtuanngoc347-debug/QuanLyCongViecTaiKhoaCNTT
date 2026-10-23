@@ -13,6 +13,7 @@ import { Glyph } from '../ui/glyph';
 import { Combobox, type ComboOption } from '../ui/Combobox';
 import { useIsMobile } from '../ui/useIsMobile';
 import { MyProfileMobile } from './MyProfile';
+import { useShowMore } from '../ui/ShowMore';
 import { NEW_PARENT, NO_PARENT, PERMISSIONS, UNIT_TYPES, membershipErrors, passwordErrors, personBody, personErrors, unitBody, unitErrors } from './orgValidation';
 
 const PersonLink = ({ p, contact = false }: { p: PersonDto; contact?: boolean }) => (
@@ -124,6 +125,7 @@ export function StaffPage() {
   const [unit, setUnit] = useState('');
   // Mặc định hiện tất cả để thấy rõ cả người đang hoạt động lẫn đã ngừng; lọc nhanh bằng các thẻ trạng thái.
   const [status, setStatus] = useState('');
+  const page = useShowMore(15);
   useTitle('Nhân sự');
   const matches = org.people.filter((p) => (!search || normalize(`${p.name} ${p.email} ${p.employeeCode}`).includes(normalize(search)))
     && (!unit || org.memberships.some((m) => m.personId === p.id && m.unitId === Number(unit) && currentMembership(m))));
@@ -154,9 +156,9 @@ export function StaffPage() {
           {list.length ? (
             <>
               <div className="table-wrap admin-table">
-                <table className="m-cards" aria-label="Danh sách nhân sự">
+                <table className="m-cards staff-table" aria-label="Danh sách nhân sự">
                   <thead><tr><th>Họ và tên</th><th>Đơn vị chính</th><th>Học hàm / Học vị</th><th>Email</th><th>Trạng thái</th></tr></thead>
-                  <tbody>{list.map((p) => (
+                  <tbody>{page.take(list).map((p) => (
                     <tr key={p.id} className={p.active ? '' : 'row-inactive'}>
                       <td><PersonLink p={p} /></td>
                       <td data-label="Đơn vị">{primaryUnit(p.id) || <span className="muted">Chưa thuộc đơn vị</span>}</td>
@@ -169,6 +171,7 @@ export function StaffPage() {
                   ))}</tbody>
                 </table>
               </div>
+              {page.more(list.length)}
               <p className="muted staff-foot"><small>Hiển thị {list.length} / {org.people.length} hồ sơ · <span className="green">{activeCount} đang hoạt động</span> · <span className="red">{inactiveCount} ngừng hoạt động</span></small></p>
             </>
           ) : <Empty title="Không tìm thấy nhân sự" description="Hãy đổi từ khóa hoặc bỏ bớt bộ lọc." action={<button className="button secondary" onClick={() => { setSearch(''); setUnit(''); setStatus(''); }}>Xóa bộ lọc</button>} />}

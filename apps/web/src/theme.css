@@ -1,5 +1,5 @@
 /* =========================================================
-   Khoa CNTT — Hệ thống thiết kế "Task Management"
+   Khoa Công nghệ Thông tin — Hệ thống thiết kế "Task Management"
    Nạp sau public/styles.css: ghi đè token + thành phần dùng chung, thêm bảng điều khiển.
    Nguyên tắc: một màu chính (xanh), màu trạng thái chỉ để nhấn thông tin quan trọng;
    phân cấp rõ: Công việc → Giao việc → Tiến độ → Đánh giá.
@@ -30,7 +30,7 @@ h3{font-size:16.5px;font-weight:650;letter-spacing:-.01em}
 .brand{padding:4px 8px 16px;margin-bottom:4px;border-bottom:1px solid var(--line)}
 .brand-mark{width:36px;height:36px;border-radius:10px;background:var(--blue);color:#fff;box-shadow:0 4px 10px #2563eb40}
 .brand-name{font-size:17.5px}
-.nav-label{font-size:13px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:16px 10px 6px}
+.nav-label{font-size:13px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 10px 6px}
 .nav-link{min-height:38px;padding:8px 10px;border-radius:9px;font-size:15.5px;color:#334155;position:relative}
 .nav-link .glyph{color:#64748b}
 .nav-link:hover{background:var(--fill)}
@@ -74,7 +74,8 @@ h3{font-size:16.5px;font-weight:650;letter-spacing:-.01em}
 .st-cancel{background:var(--danger-soft);color:#b91c1c}.st-cancel i{background:#dc2626}
 .prio{display:inline-flex;align-items:center;gap:5px;font-size:14px}
 .prio::before{content:'';width:8px;height:8px;border-radius:2px;background:currentColor;opacity:.85}
-.prio-p4{color:#dc2626}.prio-p3{color:#ea580c}.prio-p2{color:#64748b}.prio-p1{color:#94a3b8}
+/* Đủ tương phản 4,5:1 trên nền trắng và nền xám nhạt của thẻ */
+.prio-p4{color:#b91c1c}.prio-p3{color:#c2410c}.prio-p2{color:#475569}.prio-p1{color:#64748b}
 .bar{height:6px;background:var(--fill-2)}
 .bar b{background:var(--blue)}
 .bar.green b{background:#16a34a}.bar.orange b{background:#f59e0b}.bar.red b{background:#dc2626}
@@ -478,8 +479,8 @@ dialog{border-radius:16px}
 .workload.compact .workload-name strong{white-space:normal;overflow:visible}
 .workload.compact .workload-num{white-space:normal;text-align:right}
 /* Cột tên công việc đủ rộng để không xuống 3 dòng khi chữ to hơn */
-.task-table th:first-child,.task-table td:first-child{min-width:360px}
-.task-table .due{white-space:nowrap}
+.task-table th:first-child,.task-table td:first-child{min-width:220px}
+.task-table .due{white-space:normal}
 
 /* Biểu mẫu nhân sự: chia nhóm, cột xem trước */
 .form-section{border:0;margin:0;padding:0 0 18px;display:flex;flex-direction:column;gap:14px;border-bottom:1px solid var(--line);min-width:0}
@@ -682,3 +683,151 @@ dialog.due-alert[open] .due-list li:nth-child(n+5){animation-delay:200ms}
 }
 @media (prefers-reduced-motion:reduce){dialog.due-alert[open] .due-list li{animation:none}}
 dialog.due-alert .due-head h2:focus,dialog.due-alert .due-head h2:focus-visible{outline:none!important;box-shadow:none!important}
+
+/* Biểu đồ theo tháng: số tháng thay đổi (1–12 tùy kỳ) → cột co theo chiều ngang, không bị cắt / phải vuốt ngang. */
+.bars>.bar-col{min-width:0}
+.bar-pair{width:100%;justify-content:center;gap:clamp(2px,1vw,5px)}
+.bar-pair .b{flex:0 1 20px;min-width:4px}
+
+/* Thẻ phân công: cột được co dưới độ rộng nội dung → dòng "Hạn riêng … trễ N ngày" không đè cột bên cạnh. */
+.assign-card>*{min-width:0}
+.assign-state .due{white-space:normal}
+
+/* Máy tính bảng (721–1024px): menu bên thành ngăn kéo (nút ☰) như điện thoại để nội dung đủ rộng; thanh trên không gãy dòng. */
+@media (min-width:721px) and (max-width:1024px){
+  .shell{display:block}
+  .sidebar{position:fixed;z-index:30;left:0;top:0;height:100dvh;width:272px;background:#f5f5f7;transform:translateX(-100%);transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+  .sidebar.open{transform:translateX(0);box-shadow:var(--shadow-lg)}
+  .menu-scrim.open{display:block;position:fixed;inset:0;z-index:29;background:#00000033}
+  .mobile-menu{display:block}
+  .topbar .breadcrumb-first,.topbar>img.icon,.topbar .breadcrumb-icon{display:none}
+  .task-table th:nth-child(4),.task-table td:nth-child(4),.task-table th:nth-child(6),.task-table td:nth-child(6){display:none}
+  .task-table .progress-cell{min-width:110px}
+  .task-table th:first-child,.task-table td:first-child{min-width:200px}
+}
+
+/* Logo Trường Đại học Công Thương Thành phố Hồ Chí Minh (public/logo-huit.webp) thay cho ô biểu tượng màu xanh. */
+.brand-logo{background:#fff;box-shadow:0 1px 3px #0f172a26;border-radius:50%;object-fit:contain;padding:1px}
+
+/* ===== Chỉnh giao diện 21/10/2026 (màn hình ứng dụng): màu dành cho dữ liệu, không cho khung ===== */
+/* Menu bên: mục đang mở là nền xám nhạt và chữ đậm, không tô xanh, không vạch trái. */
+.nav-link.active{background:var(--fill-2);color:var(--ink)}
+.nav-link.active::before{display:none}
+.nav-link.active .glyph{color:var(--ink)}
+/* Bộ lọc dạng chip đang chọn: mực đậm thay cho xanh. Nhãn chức vụ: nền nhạt. */
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.portal-badge{background:var(--soft);color:var(--blue-ink)}
+/* Chỉ số: một khối chia vạch mảnh, nhãn trên số dưới, không icon; màu chỉ nằm trên số cần chú ý. */
+.stat-grid{gap:0;background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.stat-grid>.stat-tile{border:0;border-radius:0;box-shadow:1px 0 0 var(--line),0 1px 0 var(--line);background:#fff}
+.stat-grid>.stat-tile:hover{box-shadow:1px 0 0 var(--line),0 1px 0 var(--line);background:var(--surface-2)}
+.stat-tile .stat-body b{color:var(--ink)}
+.tone-red .stat-body b{color:var(--danger)}
+.tone-amber .stat-body b{color:var(--amber)}
+/* Tiêu đề cột: chữ thường, xám, không giãn chữ. */
+table th{text-transform:none;letter-spacing:0;font-size:13.5px;font-weight:600}
+/* Chỉ số trang Thống kê: cùng kiểu một khối chia vạch; số màu mực, chỉ quá hạn giữ màu. */
+.kpi-grid{gap:0;background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.kpi-grid>.kpi{border:0;border-radius:0;box-shadow:1px 0 0 var(--line),0 1px 0 var(--line);background:#fff}
+.kpi-grid>.kpi:hover{box-shadow:1px 0 0 var(--line),0 1px 0 var(--line);background:var(--surface-2)}
+.kpi strong.green,.kpi strong.blue{color:var(--ink)}
+
+/* ===== Trang đăng nhập — mẫu "ảnh toàn màn hình + thẻ nổi" (21/10/2026) ===== */
+.login-cover{position:relative;min-height:100vh;min-height:100dvh;overflow:hidden;background:#033a70;isolation:isolate}
+.login-cover .login-photo{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 60%;z-index:-2}
+.login-cover::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(180deg,#021f3dcc 0%,#03396c80 40%,#021f3de6 100%)}
+.login-cover-main{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px 16px 24px}
+.login-float{width:min(440px,100%);background:#fff;border-radius:22px;padding:36px 36px 30px;box-shadow:0 30px 70px -24px #000a,0 2px 6px #0002}
+.login-float-head{text-align:center;margin-bottom:26px;padding-bottom:22px;border-bottom:1px solid #e8edf4}
+.login-float-head .login-seal{width:72px;height:72px;margin:0 auto 14px;display:block;border-radius:50%;background:#fff;padding:3px;box-sizing:border-box;box-shadow:0 0 0 5px #0455a014}
+.login-float-title{margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.15;color:var(--ink)}
+.login-float-school{margin:6px 0 0;font-size:14.5px;color:var(--muted);text-wrap:balance}
+.login-float h1{font-size:26px;letter-spacing:-.02em;margin:0}
+.login-float .login-sub{margin:6px 0 22px;color:var(--muted);font-size:15px}
+.login-float .field{margin-bottom:16px}
+.login-float .field label{font-weight:600;margin-bottom:8px;display:block}
+.login-float .field input{height:50px;border-radius:12px;background:#f5f7fb;border:1px solid #e3e8f0;padding:0 16px;font-size:16px;transition:border-color .15s,background .15s,box-shadow .15s}
+.login-float .field input:hover{border-color:#cdd5e1}
+.login-float .field input:focus{outline:none;background:#fff;border-color:#0455a0;box-shadow:0 0 0 4px #0455a01f}
+.login-float .password-toggle{color:#0455a0;font-weight:600}
+.login-float .form-body{gap:0}
+.login-float .login-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin:2px 0 20px}
+.login-float .login-submit{width:100%;height:50px;border-radius:12px;font-size:16.5px;font-weight:700;background:#0455a0!important;box-shadow:0 10px 24px -12px #0455a0;transition:transform .12s,background .15s}
+.login-float .login-submit:not(:disabled):hover{background:#033f78!important}
+.login-float .login-submit:not(:disabled):active{transform:translateY(1px)}
+.login-cover-foot{margin:0;font-size:12.5px;color:#ffffffcc;text-align:center;text-shadow:0 1px 6px #0008}
+.login-cover-foot a{color:inherit}
+@media (max-width:720px){
+  .login-cover-main{justify-content:flex-start;padding:28px 14px 20px}
+  .login-float{padding:26px 20px 22px;border-radius:20px}
+  .login-float-head{margin-bottom:20px;padding-bottom:18px}
+  .login-float-head .login-seal{width:60px;height:60px;margin-bottom:10px}
+  .login-float-title{font-size:21px}
+}
+@media (prefers-reduced-motion:reduce){.login-float .login-submit{transition:none}}
+
+/* Phân công đã đóng (từ chối / hủy): danh sách gọn, thu lại mặc định */
+.closed-assignments{padding:0;overflow:hidden}
+.closed-assignments>summary{cursor:pointer;padding:14px 18px;font-weight:600;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.closed-assignments>summary small{font-weight:400}
+.closed-assignments>ul{list-style:none;margin:0;padding:0 18px 6px;max-height:360px;overflow-y:auto}
+.closed-assignments li{padding:10px 0;border-top:1px solid var(--line);min-width:0}
+.closed-head{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.closed-assignments li p{margin:4px 0 0;overflow-wrap:anywhere}
+
+/* Đang chờ duyệt xin từ chối: thay cột tiến độ của thẻ phân công */
+.decline-pending{background:#fdecee;color:#8a1c24;border-radius:12px;padding:10px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.decline-pending small{display:block;color:#a8424b}
+.decline-pending small.muted{color:var(--muted)}
+.decline-pending p{margin:4px 0 0;color:var(--ink);overflow-wrap:anywhere}
+
+/* Tệp đính kèm trong form tạo / sửa công việc */
+.task-files{display:flex;flex-direction:column;gap:8px;min-width:0}
+.task-files .file-list{display:flex;flex-wrap:wrap;gap:6px}
+.task-files .file-chip{max-width:100%;min-width:0}
+.task-files .file-chip-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.task-files .file-chip.new{border-color:var(--blue);background:#eef4ff}
+.task-files .file-chip.removed{opacity:.6;text-decoration:line-through}
+.task-files .file-chip .undo{color:var(--blue-ink);text-decoration:none;font-weight:600}
+.task-files-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+
+/* Chữ phụ trên ô đơn vị đang chọn (nền xanh): trắng đặc để đủ 4,5:1 */
+.unit-entry.selected small{color:#fff}
+
+/* ===================== Dễ đọc: thứ bậc thông tin, văn bản dài ===================== */
+/* Văn bản dài (mô tả, tiêu chí, kết quả): độ dài dòng vừa mắt, giãn dòng thoải mái, thu gọn khi quá dài. */
+.long-text{max-width:72ch}
+.long-text .prewrap{line-height:1.65;margin:0}
+.long-text .prewrap.clamped{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
+.long-text .more-toggle{margin-top:6px;padding:0}
+.content-card .content-sec h3{letter-spacing:.06em}
+
+/* Thống kê: phần "Cách tính" thu gọn */
+details.stats-note{margin-top:4px;font-size:14px;color:var(--muted)}
+details.stats-note summary{cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-weight:600;color:#475569;list-style:none}
+details.stats-note summary::-webkit-details-marker{display:none}
+details.stats-note summary::after{content:'›';transform:rotate(90deg);transition:transform .15s}
+details.stats-note[open] summary::after{transform:rotate(-90deg)}
+details.stats-note ul{margin:6px 0 0;padding-left:18px;line-height:1.55}
+
+/* Trang chủ: phạm vi nhiều đơn vị */
+.portal-scope{display:inline}
+.scope-more{display:inline}
+.scope-more summary{display:inline;cursor:pointer;margin-left:6px;color:var(--blue-ink);font-weight:600;list-style:none}
+.scope-more summary::-webkit-details-marker{display:none}
+.scope-more[open] summary{display:none}
+.scope-more[open]>span::before{content:', '}
+
+/* Xếp hạng "Hoàn thành nhiều nhất": số liệu 2 dòng, tên không bị bóp */
+.workload-num.stacked{flex-direction:column;align-items:flex-end;gap:0;line-height:1.25}
+.workload-num.stacked small{font-size:13px;color:var(--muted)}
+.workload.compact .workload-name strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* "Phải xong trước": trạng thái, đơn vị, hạn trên một dòng */
+.dep-item small{display:block;line-height:1.5}
+.dep-item small>:first-child{display:inline-flex;vertical-align:middle;margin-right:6px}
+
+/* Dòng việc không có thao tác: cột thao tác không chiếm chỗ */
+.task-row-action:empty{display:none}
+.nowrap{white-space:nowrap}

@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { send } from '../api/client';
+import type { FileDto } from '@khoa/shared';
+import { send, upload } from '../api/client';
 import { useSession } from '../session';
 import { useAccess } from '../nav';
 import { Badge, ButtonLink, Empty, ErrorSummary, Field, Input, Loading, Modal, PRIORITY, RECURRENCE, STATUS, Seg, Select, Textarea, useUi } from '../ui/ui';
-import { addDaysIso, fmtDay, isoDay, normalize, todayIso, ymdText } from '../format';
+import { addDaysIso, fmtDay, isoDay, kb, normalize, todayIso, ymdText } from '../format';
 import { useDirtyGuard, useTitle } from '../pages/common';
 import { useCategories, useTaskDetail, useTaskList, useTemplates } from './queries';
-import { Failed } from './TaskDetail';
+import { COMMENT_EXT, Failed } from './TaskDetail';
+import { Glyph } from '../ui/glyph';
+import { useIsMobile } from '../ui/useIsMobile';
 
 function TemplatePicker({ onClose }: { onClose: () => void }) {
   const q = useTemplates();
@@ -63,10 +66,66 @@ function DependsPicker({ options, initial, error }: { options: DepOption[]; init
             <input type="checkbox" checked={picked.includes(o.id)} onChange={() => toggle(o.id)} />
             <span>
               <strong title={o.title}>{o.title}</strong>
-              <small className="muted"><Badge map={STATUS} value={o.status} />{o.unitName}{o.due ? ` · hạn ${fmtDay(o.due)}` : ''}</small>
+              <small className="muted"><Badge map={STATUS} value={o.status} />{o.unitName}{o.due ? <span className="nowrap"> · hạn {fmtDay(o.due)}</span> : null}</small>
             </span>
           </label>
         )) : <p className="muted small dep-empty">{options.length ? 'Không có công việc phù hợp.' : 'Chưa có công việc nào để chọn.'}</p>}
+      </div>
+    </Field>
+  );
+}
+
+const MAX_TASK_FILES = 20;
+
+/** Tệp đính kèm của công việc: tệp đã có (khi sửa) có thể gỡ, tệp mới được gửi khi bấm lưu. */
+function TaskFilesField({ existing, files, removed, error, onFiles, onRemoved }: {
+  existing: FileDto[]; files: File[]; removed: Set<number>; error?: string;
+  onFiles: (f: File[]) => void; onRemoved: (r: Set<number>) => void;
+}) {
+  const { toast } = useUi();
+  const input = useRef<HTMLInputElement>(null);
+  const kept = existing.filter((f) => !removed.has(f.id)).length;
+  const add = (list: FileList | null) => {
+    if (!list?.length) return;
+    const next = [...files, ...Array.from(list)];
+    const bad = next.find((f) => !COMMENT_EXT.includes((f.name.match(/\.[^.]+$/)?.[0] ?? '').toLowerCase()));
+    if (bad) { toast(`Không nhận tệp “${bad.name}”. Chỉ nhận: ${COMMENT_EXT.join(', ')}.`, true); return; }
+    const big = next.find((f) => f.size > 20 * 1024 * 1024);
+    if (big) { toast(`Tệp “${big.name}” lớn hơn 20 MB.`, true); return; }
+    const empty = next.find((f) => f.size === 0);
+    if (empty) { toast(`Tệp “${empty.name}” rỗng.`, true); return; }
+    if (next.length > 10) { toast('Mỗi lần lưu đính kèm tối đa 10 tệp.', true); return; }
+    if (kept + next.length > MAX_TASK_FILES) { toast(`Mỗi công việc tối đa ${MAX_TASK_FILES} tệp đính kèm.`, true); return; }
+    onFiles(next);
+  };
+  const toggle = (id: number) => { const r = new Set(removed); if (r.has(id)) r.delete(id); else r.add(id); onRemoved(r); };
+  return (
+    <Field name="files" label="Tệp đính kèm" help={`Tối đa 20 MB mỗi tệp, ${MAX_TASK_FILES} tệp mỗi công việc.`} error={error}>
+      <div className="task-files">
+        {existing.length || files.length ? (
+          <div className="file-list pending-files">
+            {existing.map((f) => (
+              <span key={f.id} className={`file-chip${removed.has(f.id) ? ' removed' : ''}`}>
+                <Glyph name="paperclip" size={13} /><span className="file-chip-name">{f.name}</span> · {kb(f.size)}
+                {removed.has(f.id)
+                  ? <button type="button" className="undo" onClick={() => toggle(f.id)}>Hoàn tác</button>
+                  : <button type="button" aria-label={`Gỡ tệp ${f.name}`} onClick={() => toggle(f.id)}>✕</button>}
+              </span>
+            ))}
+            {files.map((f, i) => (
+              <span key={`${f.name}-${i}`} className="file-chip new">
+                <Glyph name="paperclip" size={13} /><span className="file-chip-name">{f.name}</span> · {kb(f.size)}
+                <button type="button" aria-label={`Bỏ tệp ${f.name}`} onClick={() => onFiles(files.filter((_, j) => j !== i))}>✕</button>
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <input ref={input} id="files" type="file" multiple hidden accept={COMMENT_EXT.join(',')} onChange={(e) => { add(e.target.files); e.target.value = ''; }} />
+        <div className="task-files-bar">
+          <button type="button" className="button small secondary" onClick={() => input.current?.click()}><Glyph name="paperclip" size={15} />Chọn tệp…</button>
+          {removed.size ? <small className="warn-text">Sẽ gỡ {removed.size} tệp khi lưu.</small> : null}
+          {files.length ? <small className="muted">{files.length} tệp mới sẽ được tải lên khi lưu.</small> : null}
+        </div>
       </div>
     </Field>
   );
@@ -90,6 +149,9 @@ export function TaskFormPage({ editing }: { editing: boolean }) {
   const [message, setMessage] = useState('');
   const [picker, setPicker] = useState(false);
   const [recurrence, setRecurrence] = useState('0');
+  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [removed, setRemoved] = useState<Set<number>>(new Set());
+  const mobile = useIsMobile();
   useTitle(editing ? 'Sửa công việc' : 'Tạo công việc');
 
   if (editing) {
@@ -114,6 +176,23 @@ export function TaskFormPage({ editing }: { editing: boolean }) {
   const depOptions: DepOption[] = poolTasks.map((t) => ({ id: t.id, title: t.title, status: t.status, unitName: t.unitName, due: t.due }));
   const isDraft = d?.summary.status === 0;
   const backTo = editing ? `/cong-viec/chi-tiet?id=${id}` : '/cong-viec';
+
+  /** Gỡ tệp đã đánh dấu, rồi tải tệp mới lên. Trả về lỗi đầu tiên (nếu có). */
+  async function saveFiles(taskId: number): Promise<string | null> {
+    try {
+      for (const fileId of removed) {
+        const r = await send('DELETE', `/api/tep/${fileId}`);
+        if (r.errors) return Object.values(r.errors)[0];
+      }
+      if (newFiles.length) {
+        const fd = new FormData();
+        newFiles.forEach((f) => fd.append('files', f));
+        const r = await upload(`/api/cong-viec/${taskId}/tep`, fd);
+        if (r.errors) return Object.values(r.errors)[0];
+      }
+      return null;
+    } catch (err) { return (err as Error).message; }
+  }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -145,12 +224,15 @@ export function TaskFormPage({ editing }: { editing: boolean }) {
       const r = editing ? await send<{ id: number }>('PUT', `/api/cong-viec/${id}`, body) : await send<{ id: number }>('POST', '/api/cong-viec', body);
       if (r.errors) { setErrors(r.errors); return; }
       guard.markClean();
+      // Công việc đã lưu; tệp gửi sau. Lỗi tệp không làm mất công việc vừa lưu: báo để người dùng đính kèm lại.
+      const fileError = await saveFiles(r.value.id);
       void qc.invalidateQueries({ queryKey: ['list'] });
       void qc.invalidateQueries({ queryKey: ['templates'] });
       void qc.invalidateQueries({ queryKey: ['stats'] });
       if (editing) void qc.invalidateQueries({ queryKey: ['detail', id] });
       navigate(`/cong-viec/chi-tiet?id=${r.value.id}${editing ? '' : '&tab=assign'}`);
-      toast(editing ? 'Đã lưu thay đổi.' : body.draft ? 'Đã lưu nháp. Chỉ bạn nhìn thấy bản nháp này.' : 'Đã tạo công việc. Giao việc cho người thực hiện ngay bên dưới.');
+      if (fileError) toast(`${editing ? 'Đã lưu thay đổi' : 'Đã tạo công việc'} nhưng chưa xử lý được tệp đính kèm: ${fileError} Mở “Sửa” để đính kèm lại.`, true);
+      else toast(editing ? 'Đã lưu thay đổi.' : body.draft ? 'Đã lưu nháp. Chỉ bạn nhìn thấy bản nháp này.' : 'Đã tạo công việc. Giao việc cho người thực hiện ngay bên dưới.');
     } catch (err) { setMessage((err as Error).message); }
   }
 
@@ -159,19 +241,22 @@ export function TaskFormPage({ editing }: { editing: boolean }) {
       <div className="detail-head">
         <Link className="back-link" to={backTo}>‹ {editing ? 'Chi tiết công việc' : 'Công việc'}</Link>
         <div className="detail-title">
-          <div><h1 tabIndex={-1} id="page-title">{editing ? 'Sửa công việc' : 'Tạo công việc'}</h1><p className="muted">{editing ? 'Thay đổi được ghi vào lịch sử công việc.' : 'Lưu nháp khi chưa đủ thông tin; công việc chỉ hiện với người nhận sau khi tạo chính thức và giao việc.'}</p></div>
+          <div><h1 tabIndex={-1} id="page-title">{editing ? 'Sửa công việc' : 'Tạo công việc'}</h1><p className="muted">{editing ? 'Thay đổi được ghi vào lịch sử công việc.' : 'Bản nháp chỉ mình bạn thấy, cho đến khi tạo chính thức và giao việc.'}</p></div>
           {editing ? null : <button type="button" className="button secondary" onClick={() => setPicker(true)}>Tạo từ mẫu…</button>}
         </div>
       </div>
       <section className="card form-card task-form-card">
         <form id="task-form" noValidate onSubmit={submit} onInput={guard.markDirty} key={`${id}-${templateId}`}>
           <ErrorSummary errors={errors} message={message} />
+          {mobile ? <div className="notice desk-tip" role="note"><Glyph name="monitor" size={18} /><span>Biểu mẫu {editing ? 'sửa' : 'tạo'} công việc đầy đủ và dễ thao tác hơn trên máy tính. Trên điện thoại bạn vẫn lưu được bình thường.</span></div> : null}
           {tpl ? <div className="notice">Đang dùng mẫu “{tpl.name}”. Bạn vẫn sửa được mọi thông tin.</div> : null}
           <h2>Thông tin chung</h2>
           <div className="form-grid two">
             <div className="span-2"><Input name="title" label="Tiêu đề *" defaultValue={source.title} required maxLength={250} autoComplete="off" error={errors?.title} /></div>
             <div className="span-2"><Textarea name="description" label="Mô tả" defaultValue={source.description} rows={3} maxLength={10000} error={errors?.description} /></div>
             <div className="span-2"><Textarea name="criteria" label="Tiêu chí hoàn thành" defaultValue={source.criteria} rows={2} maxLength={4000} placeholder="Ví dụ: đề cương được bộ môn thông qua, nộp bản PDF có chữ ký" error={errors?.criteria} /></div>
+            <div className="span-2"><TaskFilesField existing={d?.files ?? []} files={newFiles} removed={removed} error={errors?.files}
+              onFiles={(f) => { setNewFiles(f); guard.markDirty(); }} onRemoved={(r) => { setRemoved(r); guard.markDirty(); }} /></div>
             <Select name="categoryId" label="Thể loại *" options={cats.filter((c) => c.active || c.id === source.categoryId).map((c) => [c.id, c.name])} placeholder="Chọn thể loại" defaultValue={source.categoryId ?? ''} error={errors?.categoryId} />
             <Field name="priority" label="Mức ưu tiên"><Seg name="priority" items={Object.entries(PRIORITY).map(([k, [l]]) => [k, l])} value={source.priority} /></Field>
             <Input name="start" label="Ngày bắt đầu" type="date" defaultValue={source.start} error={errors?.start} />
@@ -184,7 +269,7 @@ export function TaskFormPage({ editing }: { editing: boolean }) {
             <DependsPicker options={depOptions} initial={source.dependsOn} error={errors?.dependsOn} />
             {editing ? null : (
               <div className="stack-sm">
-                <Field name="recurrence" label="Lặp lại" help="Chọn lặp lại thì công việc được lưu làm mẫu; đến kỳ hệ thống tạo bản nháp và nhắc bạn xác nhận.">
+                <Field name="recurrence" label="Lặp lại" help="Lưu làm mẫu; đến kỳ, hệ thống tạo bản nháp để bạn xác nhận.">
                   <Seg name="recurrence" items={Object.entries(RECURRENCE).map(([k, l]) => [k, l])} value={recurrence} onChange={setRecurrence} />
                 </Field>
                 <label className="check"><input type="checkbox" name="saveAsTemplate" value="true" /> Lưu làm mẫu để lần sau tạo nhanh</label>

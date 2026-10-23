@@ -172,7 +172,7 @@ function UnitStatsTable() {
   const max = Math.max(1, ...rows.map((u) => u.total));
   return (
     <section className="card admin-panel">
-      <div className="dash-card-head panel-head"><h3>Công việc theo đơn vị</h3><span className="muted small">{p.presets.semester[2]} · {q.data.byUnit.length} đơn vị</span></div>
+      <div className="dash-card-head panel-head"><h3>Công việc theo đơn vị</h3><span className="muted small">{p.presets.year[2]} · {q.data.byUnit.length} đơn vị</span></div>
       <div className="table-wrap admin-table">
         <table>
           <thead><tr><SortTh k="name" label="Đơn vị" sort={sort} onSort={onSort} /><SortTh k="total" label="Tổng" sort={sort} onSort={onSort} /><SortTh k="open" label="Đang mở" sort={sort} onSort={onSort} /><SortTh k="completed" label="Hoàn thành" sort={sort} onSort={onSort} /><SortTh k="overdue" label="Quá hạn" sort={sort} onSort={onSort} /><SortTh k="onTime" label="Đúng hạn" sort={sort} onSort={onSort} /></tr></thead>
@@ -283,7 +283,7 @@ export function AdminDashboard() {
     { icon: 'tasks', title: 'Công việc', desc: 'Toàn bộ công việc trong hệ thống (chỉ đọc)', metric: `${open.length} đang mở · ${overdue} quá hạn`, to: '/cong-viec?scope=all' },
     { icon: 'assign', title: 'Giao việc & phân công', desc: 'Ai đang nhận việc, việc chưa có người thực hiện', metric: `${assignees} người/đơn vị nhận việc · ${unassigned} chưa giao`, to: '/cong-viec?scope=all&view=kanban' },
     { icon: 'shield', title: 'Chức vụ & quyền', desc: 'Quyền tạo, giao, duyệt, xem báo cáo theo chức vụ', metric: `${org.roles.length} chức vụ`, to: '/chuc-vu' },
-    { icon: 'settings', title: 'Cấu hình hệ thống', desc: 'Danh mục dùng chung và nhật ký', metric: 'Thể loại · Mẫu · Nhật ký', to: '/the-loai', links: [['/the-loai', 'Thể loại công việc'], ['/mau-cong-viec', 'Mẫu công việc'], ['/nhat-ky', 'Nhật ký hệ thống']] },
+    { icon: 'settings', title: 'Cấu hình hệ thống', desc: 'Danh mục dùng chung và nhật ký', metric: '', to: '/the-loai', links: [['/the-loai', 'Thể loại công việc'], ['/mau-cong-viec', 'Mẫu công việc'], ['/nhat-ky', 'Nhật ký hệ thống']] },
   ];
   const date = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
   return (
@@ -292,7 +292,7 @@ export function AdminDashboard() {
         <div className="admin-title">
           <p className="portal-eyebrow">Quản trị hệ thống · {date.charAt(0).toUpperCase() + date.slice(1)}</p>
           <h1 tabIndex={-1} id="page-title">Bảng quản trị</h1>
-          <p className="muted">Quản lý người dùng, cơ cấu tổ chức, phân quyền và theo dõi toàn bộ công việc của khoa.</p>
+          
         </div>
         <div className="admin-side">
           <div className="admin-me"><Avatar initials={me.initials} tone={2} /><span><strong>{me.name}</strong><small className="muted">{me.email}</small></span><span className="role-badge role-admin">Quản trị</span></div>
@@ -305,25 +305,25 @@ export function AdminDashboard() {
       </header>
 
       <div className="dash">
-        <Section icon="layers" title="Tổng quan hệ thống" sub="Số liệu tài khoản, đơn vị và công việc tại thời điểm hiện tại">
+        <Section icon="layers" title="Tổng quan hệ thống">
           <div className="stat-grid seven">
-            <StatTile icon="users" label="Người dùng" value={org.people.length} note={`${org.people.filter((p) => p.isSystemAdmin).length} quản trị viên`} tone="primary" to="/nhan-su" />
-            <StatTile icon="check" label="Đang hoạt động" value={active} note={`${org.people.length - active} tài khoản đã khóa`} tone="green" to="/nhan-su" />
-            <StatTile icon="tasks" label="Công việc" value={list.data ? items.length : '…'} note={`${open.length} đang mở`} tone="blue" to="/cong-viec?scope=all" />
-            <StatTile icon="hourglass" label="Đang chờ" value={list.data ? pending.length : '…'} note={`${items.filter((t) => t.status === 3).length} chờ duyệt · ${items.filter((t) => t.status === 1).length} chưa bắt đầu`} tone={pending.length ? 'amber' : 'neutral'} to="/cong-viec?scope=all&status=3" />
-            <StatTile icon="check" label="Hoàn thành" value={list.data ? done : '…'} note={`${items.length ? Math.round((100 * done) / items.length) : 0}% tổng số`} tone="green" to="/cong-viec?scope=all&status=4" />
-            <StatTile icon="alert" label="Quá hạn" value={list.data ? overdue : '…'} note={overdue ? 'cần nhắc đơn vị xử lý' : 'không có việc trễ'} tone={overdue ? 'red' : 'neutral'} to="/cong-viec?scope=all&overdue=1" />
-            <StatTile icon="sitemap" label="Đơn vị" value={unitsActive.length} note={`${org.units.length - unitsActive.length} ngừng hoạt động`} tone="neutral" to="/to-chuc" />
+            <StatTile label="Người dùng" value={org.people.length} note={`${org.people.filter((p) => p.isSystemAdmin).length} quản trị viên`} tone="primary" to="/nhan-su" />
+            <StatTile label="Đang hoạt động" value={active} note={`${org.people.length - active} tài khoản đã khóa`} tone="green" to="/nhan-su" />
+            <StatTile label="Công việc" value={list.data ? items.length : '…'} note={`${open.length} đang mở`} tone="blue" to="/cong-viec?scope=all" />
+            <StatTile label="Đang chờ" value={list.data ? pending.length : '…'} note={`${items.filter((t) => t.status === 3).length} chờ duyệt · ${items.filter((t) => t.status === 1).length} chưa bắt đầu`} tone={pending.length ? 'amber' : 'neutral'} to="/cong-viec?scope=all&status=3" />
+            <StatTile label="Hoàn thành" value={list.data ? done : '…'} note={`${items.length ? Math.round((100 * done) / items.length) : 0}% tổng số`} tone="green" to="/cong-viec?scope=all&status=4" />
+            <StatTile label="Quá hạn" value={list.data ? overdue : '…'} note={overdue ? 'cần nhắc đơn vị xử lý' : 'không có việc trễ'} tone={overdue ? 'red' : 'neutral'} to="/cong-viec?scope=all&overdue=1" />
+            <StatTile label="Đơn vị" value={unitsActive.length} note={`${org.units.length - unitsActive.length} ngừng hoạt động`} tone="neutral" to="/to-chuc" />
           </div>
         </Section>
 
-        <Section icon="dashboard" title="Phân hệ quản trị" sub="Đi tới từng khu vực quản lý">
+        <Section icon="dashboard" title="Phân hệ quản trị">
           <div className="module-grid">
             {modules.map((m) => (
               <div key={m.title} className="module">
                 <Link to={m.to} className="module-main">
                   <span className="module-ico"><Glyph name={m.icon} size={20} /></span>
-                  <span className="module-text"><strong>{m.title}</strong><small className="muted">{m.desc}</small><span className="module-metric">{m.metric}</span></span>
+                  <span className="module-text"><strong>{m.title}</strong><small className="muted">{m.desc}</small>{m.metric ? <span className="module-metric">{m.metric}</span> : null}</span>
                   <Glyph name="arrow" size={16} className="module-go" />
                 </Link>
                 {m.links ? <span className="module-links">{m.links.map(([to, l]) => <Link key={to} to={to}>{l}</Link>)}</span> : null}
@@ -332,7 +332,7 @@ export function AdminDashboard() {
           </div>
         </Section>
 
-        <Section icon="users" title="Người dùng & công việc" sub="Tìm kiếm, lọc, sắp xếp; thao tác chi tiết mở trang quản lý tương ứng">
+        <Section icon="users" title="Người dùng & công việc">
           <div className="card admin-panel">
             <div className="panel-tabs" role="tablist" aria-label="Bảng dữ liệu">
               <button type="button" role="tab" aria-selected={tab === 'users'} className={tab === 'users' ? 'on' : ''} onClick={() => setTab('users')}><Glyph name="users" size={16} />Người dùng<span className="count">{org.people.length}</span></button>
@@ -345,13 +345,13 @@ export function AdminDashboard() {
           </div>
         </Section>
 
-        <Section icon="chart" title="Thống kê đơn vị & đánh giá" sub="Khối lượng, tiến độ, tỷ lệ đúng hạn và kết quả duyệt của từng đơn vị trong kỳ"
+        <Section icon="chart" title="Thống kê đơn vị & đánh giá" sub="Trong kỳ thống kê hiện tại"
           action={<Link className="button small secondary" to="/thong-ke"><Glyph name="chart" size={15} />Trang thống kê</Link>}>
           <UnitStatsTable />
           {list.data ? <div className="dash-grid two top"><StatusCard items={items} base="/cong-viec?scope=all" /><div className="admin-eval"><EvaluationCard /></div></div> : null}
         </Section>
 
-        <Section icon="clock" title="Hoạt động & giám sát" sub="Thao tác gần đây của người dùng và sự kiện hệ thống">
+        <Section icon="clock" title="Hoạt động & giám sát">
           <div className="dash-grid two top"><ActivityFeed />{list.data ? <RecentTasks items={items} /> : <Loading />}</div>
         </Section>
       </div>

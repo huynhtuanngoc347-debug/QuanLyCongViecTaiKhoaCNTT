@@ -8,12 +8,11 @@ import { useSession } from '../session';
 import { FieldError, PageHeader, Sheet, button, field, useUi } from '../ui';
 import { todayIso } from '../format';
 
-/** Học kỳ hiện tại: HK I 01/08 – 31/01, HK II 01/02 – 31/07. */
-function semester(): { from: string; to: string; label: string } {
+/** Năm học hiện tại: 01/08 – 31/07 (đồng bộ với bản web, đã bỏ thống kê theo học kỳ). */
+function schoolYear(): { from: string; to: string; label: string } {
   const [y, m] = todayIso().split('-').map(Number);
-  if (m >= 8) return { from: `${y}-08-01`, to: `${y + 1}-01-31`, label: `HK I ${y}–${y + 1}` };
-  if (m === 1) return { from: `${y - 1}-08-01`, to: `${y}-01-31`, label: `HK I ${y - 1}–${y}` };
-  return { from: `${y}-02-01`, to: `${y}-07-31`, label: `HK II ${y - 1}–${y}` };
+  const s = m >= 8 ? y : y - 1;
+  return { from: `${s}-08-01`, to: `${s + 1}-07-31`, label: `năm học ${s}–${s + 1}` };
 }
 
 function PasswordSheet({ onClose }: { onClose: () => void }) {
@@ -48,7 +47,7 @@ export function ProfilePage() {
   const { dark, setDark, notify } = useUi();
   const navigate = useNavigate();
   const [panel, setPanel] = useState<'' | 'password' | 'about'>('');
-  const sem = semester();
+  const sem = schoolYear();
   const stats = useQuery({ queryKey: ['stats', 'me', sem.from], queryFn: () => get<PersonalStatsDto>(`/api/thong-ke/ca-nhan?from=${sem.from}&to=${sem.to}`), enabled: isMember, staleTime: 60_000 });
   const u = session!.user;
   const s = stats.data;

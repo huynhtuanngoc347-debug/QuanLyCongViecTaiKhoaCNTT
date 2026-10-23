@@ -20,7 +20,8 @@ import { CatalogService, categories, templates } from './catalog.service';
 import { ReminderScheduler, listNotifications, markRead, runDueReminders } from './notifications';
 import { runRecurrence } from './catalog.service';
 import { personalStats, unitStats } from './stats.queries';
-import { MAX_FILES, MAX_FILE_BYTES, UploadedFile, resolveStored, storedName, uploadsRoot } from './task-support';
+import { MAX_FILES, MAX_FILE_BYTES, UploadedFile, storedName, uploadsRoot } from './task-support';
+import { openStored } from './file-store';
 import type { FileRow } from './task-policy';
 
 const NOT_VISIBLE = 'Không tìm thấy công việc hoặc bạn không có quyền xem.';
@@ -246,6 +247,20 @@ export class TasksController {
   }
 
   // ----- Tệp đính kèm -----
+  /** Đính kèm tệp cho công việc (multipart, trường "files"); người quản lý công việc. */
+  @Post('cong-viec/:id/tep')
+  @UseInterceptors(uploadInterceptor)
+  async addTaskFiles(@Param('id', ParseIntPipe) id: number, @UploadedFiles() files: UploadedFile[] | undefined, @CurrentUser() user: AuthUser): Promise<{ count: number }> {
+    return { count: unwrap(await this.commands.addTaskFiles(user.id, id, files ?? [])) };
+  }
+
+  /** Gỡ tệp đính kèm của công việc (không áp dụng cho tệp kết quả, bình luận). */
+  @Delete('tep/:id')
+  @HttpCode(204)
+  async removeTaskFile(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser): Promise<void> {
+    unwrap(await this.commands.removeTaskFile(user.id, id));
+  }
+
   /** Tải tệp đính kèm (kiểm tra quyền xem công việc). ?xem=1: mở xem trực tiếp với PDF, ảnh, TXT; định dạng khác vẫn tải về. */
   @Get('tep/:id')
   async file(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser, @Res() res: Response, @Query('xem') view?: string): Promise<void> {
@@ -264,21 +279,28 @@ export class TasksController {
       return (await Q.loadVisible(db, r, row.MaCongViec)).tasks.length ? row : null;
     });
     if (!file) throw new ApiException(404, 'Không tìm thấy tệp hoặc bạn không có quyền tải.');
-    const full = resolveStored(file.DuongDan);
-    if (!full) throw new ApiException(404, 'Tệp này chỉ có thông tin mô tả (dữ liệu mẫu), không có nội dung để tải.');
+    const content = await openStored(file.DuongDan);
+    if (!content) throw new ApiException(404, 'Tệp này chỉ có thông tin mô tả (dữ liệu mẫu), không có nội dung để tải.');
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
+    // Tệp trên kho ngoài: chuyển tiếp luồng; ngắt kết nối nếu kho lỗi giữa chừng
+    const send = () => {
+      if ('local' in content) return res.sendFile(content.local);
+      if (content.size != null) res.setHeader('Content-Length', content.size);
+      content.stream.on('error', () => res.destroy()).pipe(res);
+    };
     // Xem trực tiếp chỉ cho định dạng an toàn; kiểu nội dung lấy theo đuôi tệp (không tin LoaiTep do trình duyệt gửi).
     const inline = INLINE_TYPES[path.extname(file.TenTep).toLowerCase()];
     if (view === '1' && inline) {
       res.setHeader('Content-Type', inline);
       res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(file.TenTep)}`);
       res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
-      res.sendFile(full);
+      send();
       return;
     }
+    res.attachment(file.TenTep);
     res.setHeader('Content-Type', file.LoaiTep && file.LoaiTep.trim() ? file.LoaiTep : 'application/octet-stream');
-    res.download(full, file.TenTep);
+    send();
   }
 
   // ----- Thể loại, mẫu -----
