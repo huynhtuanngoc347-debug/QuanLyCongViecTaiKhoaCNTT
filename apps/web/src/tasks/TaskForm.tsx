@@ -23,7 +23,7 @@ function TemplatePicker({ onClose }: { onClose: () => void }) {
           <div className="template-pick">
             {list.map((t) => (
               <Link key={t.id} className="template-item" to={`/cong-viec/tao?template=${t.id}`} onClick={onClose}>
-                <div><strong>{t.name}</strong><small className="muted">{t.categoryName || 'Chưa phân loại'} · {RECURRENCE[t.recurrence]}{t.recurrence ? ' · lần tới ' + (t.nextRun ? ymdText(t.nextRun) : '') : ''} · {t.durationDays} ngày</small></div>
+                <div><strong>{t.name}</strong><small className="muted">{t.categoryName || 'Chưa phân loại'}, {RECURRENCE[t.recurrence]}{t.recurrence ? ', lần tới ' + (t.nextRun ? ymdText(t.nextRun) : '') : ''}, {t.durationDays} ngày</small></div>
                 <span className="muted small">Đã dùng {t.timesUsed} lần</span>
               </Link>
             ))}
@@ -66,7 +66,7 @@ function DependsPicker({ options, initial, error }: { options: DepOption[]; init
             <input type="checkbox" checked={picked.includes(o.id)} onChange={() => toggle(o.id)} />
             <span>
               <strong title={o.title}>{o.title}</strong>
-              <small className="muted"><Badge map={STATUS} value={o.status} />{o.unitName}{o.due ? <span className="nowrap"> · hạn {fmtDay(o.due)}</span> : null}</small>
+              <small className="muted"><Badge map={STATUS} value={o.status} />{o.unitName}{o.due ? <span className="nowrap">, hạn {fmtDay(o.due)}</span> : null}</small>
             </span>
           </label>
         )) : <p className="muted small dep-empty">{options.length ? 'Không có công việc phù hợp.' : 'Chưa có công việc nào để chọn.'}</p>}
@@ -106,7 +106,7 @@ function TaskFilesField({ existing, files, removed, error, onFiles, onRemoved }:
           <div className="file-list pending-files">
             {existing.map((f) => (
               <span key={f.id} className={`file-chip${removed.has(f.id) ? ' removed' : ''}`}>
-                <Glyph name="paperclip" size={13} /><span className="file-chip-name">{f.name}</span> · {kb(f.size)}
+                <Glyph name="paperclip" size={13} /><span className="file-chip-name">{f.name}</span> ({kb(f.size)})
                 {removed.has(f.id)
                   ? <button type="button" className="undo" onClick={() => toggle(f.id)}>Hoàn tác</button>
                   : <button type="button" aria-label={`Gỡ tệp ${f.name}`} onClick={() => toggle(f.id)}>✕</button>}
@@ -114,7 +114,7 @@ function TaskFilesField({ existing, files, removed, error, onFiles, onRemoved }:
             ))}
             {files.map((f, i) => (
               <span key={`${f.name}-${i}`} className="file-chip new">
-                <Glyph name="paperclip" size={13} /><span className="file-chip-name">{f.name}</span> · {kb(f.size)}
+                <Glyph name="paperclip" size={13} /><span className="file-chip-name">{f.name}</span> ({kb(f.size)})
                 <button type="button" aria-label={`Bỏ tệp ${f.name}`} onClick={() => onFiles(files.filter((_, j) => j !== i))}>✕</button>
               </span>
             ))}

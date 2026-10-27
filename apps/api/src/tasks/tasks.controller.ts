@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import type { Request, Response } from 'express';
 import type {
   AssignOptionsDto, AuditRowDto, CategoryDto, CommentDto, DueAlertDto, HistoryDto, NotificationListDto, PersonalStatsDto,
-  TaskDetailDto, TaskListDto, TemplateDto, UnitStatsDto,
+  RiskReportDto, TaskDetailDto, TaskListDto, TemplateDto, UnitStatsDto,
 } from '@khoa/shared';
 import { DbService } from '../db/db.service';
 import { ApiException, unwrap } from '../common/result';
@@ -20,6 +20,7 @@ import { CatalogService, categories, templates } from './catalog.service';
 import { ReminderScheduler, listNotifications, markRead, runDueReminders } from './notifications';
 import { runRecurrence } from './catalog.service';
 import { personalStats, unitStats } from './stats.queries';
+import { riskReport } from './risk.queries';
 import { MAX_FILES, MAX_FILE_BYTES, UploadedFile, storedName, uploadsRoot } from './task-support';
 import { openStored } from './file-store';
 import type { FileRow } from './task-policy';
@@ -377,6 +378,12 @@ export class TasksController {
   @Get('thong-ke/ca-nhan')
   async personalStats(@CurrentUser() user: AuthUser, @Query() q: Record<string, string | undefined>): Promise<PersonalStatsDto> {
     return unwrap(await this.withRights(user.id, (db, r) => personalStats(db, r, toInt(q.personId) ?? user.id, q.from ?? null, q.to ?? null)));
+  }
+
+  /** Nguy cơ trễ hạn của các phân công đang mở trong phạm vi quyền (unitId: lọc một đơn vị và đơn vị con). */
+  @Get('thong-ke/nguy-co-tre-han')
+  async risk(@CurrentUser() user: AuthUser, @Query('unitId') unitId?: string): Promise<RiskReportDto> {
+    return unwrap(await this.withRights(user.id, (db, r) => riskReport(db, r, toInt(unitId))));
   }
 
   // ----- Quản trị -----

@@ -142,7 +142,7 @@ function TasksTable({ items }: { items: TaskSummaryDto[] }) {
               const due = dueInfo(t.due, OPEN.includes(t.status) && t.status !== 3);
               return (
                 <tr key={t.id} className={t.overdue ? 'is-late' : ''}>
-                  <td><Link className="task-title" to={`/cong-viec/chi-tiet?id=${t.id}`}>{t.title}</Link><small className="muted">{t.unitName} · tạo bởi {t.creatorName}</small></td>
+                  <td><Link className="task-title" to={`/cong-viec/chi-tiet?id=${t.id}`}>{t.title}</Link><small className="muted">{t.unitName}, tạo bởi {t.creatorName}</small></td>
                   <td><Badge map={STATUS} value={t.status} /></td>
                   <td><Prio value={t.priority} /></td>
                   <td>{t.assignees.length ? <Avatars list={t.assignees} /> : <span className="flag flag-amber">Chưa giao</span>}</td>
@@ -172,7 +172,7 @@ function UnitStatsTable() {
   const max = Math.max(1, ...rows.map((u) => u.total));
   return (
     <section className="card admin-panel">
-      <div className="dash-card-head panel-head"><h3>Công việc theo đơn vị</h3><span className="muted small">{p.presets.year[2]} · {q.data.byUnit.length} đơn vị</span></div>
+      <div className="dash-card-head panel-head"><h3>Công việc theo đơn vị</h3><span className="muted small">{p.presets.year[2]}, {q.data.byUnit.length} đơn vị</span></div>
       <div className="table-wrap admin-table">
         <table>
           <thead><tr><SortTh k="name" label="Đơn vị" sort={sort} onSort={onSort} /><SortTh k="total" label="Tổng" sort={sort} onSort={onSort} /><SortTh k="open" label="Đang mở" sort={sort} onSort={onSort} /><SortTh k="completed" label="Hoàn thành" sort={sort} onSort={onSort} /><SortTh k="overdue" label="Quá hạn" sort={sort} onSort={onSort} /><SortTh k="onTime" label="Đúng hạn" sort={sort} onSort={onSort} /></tr></thead>
@@ -191,7 +191,7 @@ function UnitStatsTable() {
           </tbody>
         </table>
       </div>
-      <div className="pager"><span className="muted small">Bấm tên đơn vị để xem danh sách công việc của đơn vị.</span><Link className="button small secondary" to="/thong-ke">Thống kê đầy đủ, xuất Excel</Link></div>
+      <div className="pager"><span /><Link className="button small secondary" to="/thong-ke">Thống kê đầy đủ, xuất Excel</Link></div>
     </section>
   );
 }
@@ -218,7 +218,7 @@ function ActivityFeed() {
             return (
               <li key={r.id}>
                 <span className={`activity-ico noti-ico ${tone}`}><Glyph name={icon} size={15} /></span>
-                <span className="activity-text"><span><strong>{r.actor || 'Hệ thống'}</strong> · {label}{r.objectType && r.action !== 'DangNhap' && r.action !== 'DangXuat' ? <span className="muted"> — {r.objectType} {r.objectId}</span> : null}</span><small className="muted">{relative(r.at)}{r.ip ? ` · ${r.ip}` : ''}</small></span>
+                <span className="activity-text"><span><strong>{r.actor || 'Hệ thống'}</strong>: {label}{r.objectType && r.action !== 'DangNhap' && r.action !== 'DangXuat' ? <span className="muted"> — {r.objectType} {r.objectId}</span> : null}</span><small className="muted">{relative(r.at)}{r.ip ? `, ${r.ip}` : ''}</small></span>
               </li>
             );
           })}
@@ -239,7 +239,7 @@ function RecentTasks({ items }: { items: TaskSummaryDto[] }) {
             <span className="activity-ico noti-ico info"><Glyph name={t.assignees.length ? 'assign' : 'plus'} size={15} /></span>
             <span className="activity-text">
               <Link to={`/cong-viec/chi-tiet?id=${t.id}`}><strong>{t.title}</strong></Link>
-              <small className="muted">{t.creatorName} tạo · {relative(t.createdAt)} · {t.assignees.length ? `giao cho ${t.assignees.map((a) => a.name).slice(0, 2).join(', ')}${t.assignees.length > 2 ? ` +${t.assignees.length - 2}` : ''}` : 'chưa giao'}</small>
+              <small className="muted">{t.creatorName} tạo, {relative(t.createdAt)}, {t.assignees.length ? `giao cho ${t.assignees.map((a) => a.name).slice(0, 2).join(', ')}${t.assignees.length > 2 ? ` +${t.assignees.length - 2}` : ''}` : 'chưa giao'}</small>
             </span>
             <Badge map={STATUS} value={t.status} />
           </li>
@@ -274,25 +274,13 @@ export function AdminDashboard() {
   const pending = items.filter((t) => t.status === 1 || t.status === 3);
   const done = items.filter((t) => t.status === 4).length, overdue = items.filter((t) => t.overdue).length;
   const unitsActive = org.units.filter((u) => u.active);
-  const unassigned = open.filter((t) => !t.assignees.length && t.status !== 5).length;
-  const assignees = new Set(open.flatMap((t) => t.assignees.map((a) => `${a.kind}-${a.id}`))).size;
-  const members = new Set(org.memberships.filter((m) => !m.end || m.end >= today).map((m) => m.personId)).size;
-  const modules: { icon: GlyphName; title: string; desc: string; metric: string; to: string; links?: [string, string][] }[] = [
-    { icon: 'users', title: 'Người dùng', desc: 'Tài khoản, khóa/mở khóa, cấp lại mật khẩu', metric: `${org.people.length} tài khoản · ${org.people.length - active} đã khóa`, to: '/nhan-su' },
-    { icon: 'sitemap', title: 'Đơn vị & cơ cấu', desc: 'Khoa, bộ môn, ban, hội đồng và thành viên', metric: `${unitsActive.length} đơn vị · ${members} người tham gia`, to: '/to-chuc' },
-    { icon: 'tasks', title: 'Công việc', desc: 'Toàn bộ công việc trong hệ thống (chỉ đọc)', metric: `${open.length} đang mở · ${overdue} quá hạn`, to: '/cong-viec?scope=all' },
-    { icon: 'assign', title: 'Giao việc & phân công', desc: 'Ai đang nhận việc, việc chưa có người thực hiện', metric: `${assignees} người/đơn vị nhận việc · ${unassigned} chưa giao`, to: '/cong-viec?scope=all&view=kanban' },
-    { icon: 'shield', title: 'Chức vụ & quyền', desc: 'Quyền tạo, giao, duyệt, xem báo cáo theo chức vụ', metric: `${org.roles.length} chức vụ`, to: '/chuc-vu' },
-    { icon: 'settings', title: 'Cấu hình hệ thống', desc: 'Danh mục dùng chung và nhật ký', metric: '', to: '/the-loai', links: [['/the-loai', 'Thể loại công việc'], ['/mau-cong-viec', 'Mẫu công việc'], ['/nhat-ky', 'Nhật ký hệ thống']] },
-  ];
   const date = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
   return (
     <div className="admin">
       <header className="admin-header">
         <div className="admin-title">
-          <p className="portal-eyebrow">Quản trị hệ thống · {date.charAt(0).toUpperCase() + date.slice(1)}</p>
+          <p className="portal-eyebrow">Quản trị hệ thống, {date.charAt(0).toUpperCase() + date.slice(1)}</p>
           <h1 tabIndex={-1} id="page-title">Bảng quản trị</h1>
-          
         </div>
         <div className="admin-side">
           <div className="admin-me"><Avatar initials={me.initials} tone={2} /><span><strong>{me.name}</strong><small className="muted">{me.email}</small></span><span className="role-badge role-admin">Quản trị</span></div>
@@ -310,25 +298,10 @@ export function AdminDashboard() {
             <StatTile label="Người dùng" value={org.people.length} note={`${org.people.filter((p) => p.isSystemAdmin).length} quản trị viên`} tone="primary" to="/nhan-su" />
             <StatTile label="Đang hoạt động" value={active} note={`${org.people.length - active} tài khoản đã khóa`} tone="green" to="/nhan-su" />
             <StatTile label="Công việc" value={list.data ? items.length : '…'} note={`${open.length} đang mở`} tone="blue" to="/cong-viec?scope=all" />
-            <StatTile label="Đang chờ" value={list.data ? pending.length : '…'} note={`${items.filter((t) => t.status === 3).length} chờ duyệt · ${items.filter((t) => t.status === 1).length} chưa bắt đầu`} tone={pending.length ? 'amber' : 'neutral'} to="/cong-viec?scope=all&status=3" />
+            <StatTile label="Đang chờ" value={list.data ? pending.length : '…'} note={`${items.filter((t) => t.status === 3).length} chờ duyệt, ${items.filter((t) => t.status === 1).length} chưa bắt đầu`} tone={pending.length ? 'amber' : 'neutral'} to="/cong-viec?scope=all&status=3" />
             <StatTile label="Hoàn thành" value={list.data ? done : '…'} note={`${items.length ? Math.round((100 * done) / items.length) : 0}% tổng số`} tone="green" to="/cong-viec?scope=all&status=4" />
             <StatTile label="Quá hạn" value={list.data ? overdue : '…'} note={overdue ? 'cần nhắc đơn vị xử lý' : 'không có việc trễ'} tone={overdue ? 'red' : 'neutral'} to="/cong-viec?scope=all&overdue=1" />
             <StatTile label="Đơn vị" value={unitsActive.length} note={`${org.units.length - unitsActive.length} ngừng hoạt động`} tone="neutral" to="/to-chuc" />
-          </div>
-        </Section>
-
-        <Section icon="dashboard" title="Phân hệ quản trị">
-          <div className="module-grid">
-            {modules.map((m) => (
-              <div key={m.title} className="module">
-                <Link to={m.to} className="module-main">
-                  <span className="module-ico"><Glyph name={m.icon} size={20} /></span>
-                  <span className="module-text"><strong>{m.title}</strong><small className="muted">{m.desc}</small>{m.metric ? <span className="module-metric">{m.metric}</span> : null}</span>
-                  <Glyph name="arrow" size={16} className="module-go" />
-                </Link>
-                {m.links ? <span className="module-links">{m.links.map(([to, l]) => <Link key={to} to={to}>{l}</Link>)}</span> : null}
-              </div>
-            ))}
           </div>
         </Section>
 
@@ -345,7 +318,7 @@ export function AdminDashboard() {
           </div>
         </Section>
 
-        <Section icon="chart" title="Thống kê đơn vị & đánh giá" sub="Trong kỳ thống kê hiện tại"
+        <Section icon="chart" title="Thống kê đơn vị & đánh giá"
           action={<Link className="button small secondary" to="/thong-ke"><Glyph name="chart" size={15} />Trang thống kê</Link>}>
           <UnitStatsTable />
           {list.data ? <div className="dash-grid two top"><StatusCard items={items} base="/cong-viec?scope=all" /><div className="admin-eval"><EvaluationCard /></div></div> : null}

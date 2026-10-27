@@ -5,14 +5,14 @@ import { useSession } from './session';
 export const PORTAL_ICONS: Record<string, GlyphName> = { admin: 'shield', 'ca-nhan': 'user' };
 
 /** Chức năng quản trị chỉ dùng trên máy tính; điện thoại ẩn khỏi menu và hiện lời nhắc nếu mở bằng đường dẫn. */
-export const DESKTOP_ONLY = new Set(['/admin', '/chuc-vu', '/the-loai', '/mau-cong-viec', '/nhat-ky', '/them-nhan-su', '/sua-nhan-su', '/them-don-vi', '/them-thanh-vien']);
+export const DESKTOP_ONLY = new Set(['/admin', '/chuc-vu', '/the-loai', '/mau-cong-viec', '/nhat-ky', '/sao-luu', '/them-nhan-su', '/sua-nhan-su', '/them-don-vi', '/them-thanh-vien']);
 
 export interface MenuItem { group: string; path: string; label: string; icon: GlyphName; visible: boolean; badge?: number; }
 
 export const TASK_LABELS: Record<string, string> = {
   '/cong-viec': 'Công việc', '/cong-viec/chi-tiet': 'Chi tiết công việc', '/cong-viec/tao': 'Tạo công việc', '/cong-viec/sua': 'Sửa công việc',
   '/cho-duyet': 'Chờ tôi duyệt', '/thong-ke': 'Thống kê đơn vị', '/thong-ke-ca-nhan': 'Thống kê của tôi', '/the-loai': 'Thể loại công việc',
-  '/mau-cong-viec': 'Mẫu công việc', '/nhat-ky': 'Nhật ký hệ thống', '/thong-bao': 'Thông báo',
+  '/mau-cong-viec': 'Mẫu công việc', '/nhat-ky': 'Nhật ký hệ thống', '/nguy-co-tre-han': 'Nguy cơ trễ hạn', '/sao-luu': 'Sao lưu và phục hồi', '/thong-bao': 'Thông báo',
 };
 
 export function useAccess() {
@@ -36,10 +36,12 @@ export function useAccess() {
     { group: 'CÔNG VIỆC', path: '/cong-viec', label: 'Công việc', icon: 'tasks', visible: true },
     { group: 'CÔNG VIỆC', path: '/cho-duyet', label: 'Chờ tôi duyệt', icon: 'review', visible: canReviewAny },
     { group: 'CÔNG VIỆC', path: '/thong-ke', label: 'Thống kê đơn vị', icon: 'chart', visible: canViewUnitStats },
+    { group: 'CÔNG VIỆC', path: '/nguy-co-tre-han', label: 'Nguy cơ trễ hạn', icon: 'alert', visible: canViewUnitStats },
     { group: 'CÔNG VIỆC', path: '/thong-ke-ca-nhan', label: 'Thống kê của tôi', icon: 'userChart', visible: caps.isMember },
     { group: 'QUẢN TRỊ CÔNG VIỆC', path: '/the-loai', label: 'Thể loại công việc', icon: 'tag', visible: isAdmin },
     { group: 'QUẢN TRỊ CÔNG VIỆC', path: '/mau-cong-viec', label: 'Mẫu công việc', icon: 'template', visible: isAdmin || canCreate },
     { group: 'QUẢN TRỊ CÔNG VIỆC', path: '/nhat-ky', label: 'Nhật ký hệ thống', icon: 'log', visible: isAdmin },
+    { group: 'QUẢN TRỊ CÔNG VIỆC', path: '/sao-luu', label: 'Sao lưu và phục hồi', icon: 'download', visible: isAdmin },
   ];
 
   function canOpen(path: string, params: URLSearchParams): boolean {
@@ -55,9 +57,9 @@ export function useAccess() {
       case '/cong-viec': case '/cong-viec/chi-tiet': case '/thong-bao': case '/cong-viec/sua': return true;
       case '/cong-viec/tao': return canCreate;
       case '/cho-duyet': return canReviewAny;
-      case '/thong-ke': return canViewUnitStats;
+      case '/thong-ke': case '/nguy-co-tre-han': return canViewUnitStats;
       case '/thong-ke-ca-nhan': return caps.isMember || isAdmin;
-      case '/the-loai': case '/nhat-ky': return isAdmin;
+      case '/the-loai': case '/nhat-ky': case '/sao-luu': return isAdmin;
       case '/mau-cong-viec': return isAdmin || canCreate;
       default: return true; // đường dẫn lạ: trang "Không tìm thấy"
     }

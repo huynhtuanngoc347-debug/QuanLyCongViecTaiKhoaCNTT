@@ -37,13 +37,14 @@ The API serves the **built** web bundle: after changing `apps/web`, run `npm run
 - `apps/web` — React 19 + Vite, `createHashRouter` (all routes are `#/...`), TanStack Query. Used on both desktop **and phones** (responsive, breakpoint ≤720px).
 - `packages/shared/src/index.ts` — all DTO types shared by API and web. Change a response shape here first.
 - `apps/mobile` — retired separate phone app. Not served anymore: `/m/...` returns a redirect page (`common/mobile-redirect.ts`) to the matching web route. Do not add features there.
+- `apps/android` — Android app (Capacitor 8): a WebView that loads the **server's web pages** (`server.url` in `capacitor.config.ts`, default `http://10.0.2.2:5080` = host PC from the Android emulator; real phones: `SERVER_URL=http://<ip>:5080 npm run sync -w @khoa/android`). No separate UI — features come from `apps/web`. Native code is only `MainActivity.java` (file downloads via DownloadManager with the login cookie, Back button = browser back). The web detects the app by `KhoaAndroid` in the user agent (`openFile`: "Xem" downloads instead). Open `apps/android/android` in Android Studio, or `gradlew assembleDebug` there. Not part of `npm run build`.
 - `sql/` — incremental DB scripts (02–06), idempotent, additive only. The API detects optional tables at runtime (`OBJECT_ID(...) IS NOT NULL`) so it still runs if a script wasn't applied (pattern: `HAS_DECLINE_TABLE` in `tasks/task-policy.ts`, `session-revocation.ts`).
 
 ### API request flow
 
 1. `main.ts`: `securityHeaders`, `/m` redirect, static web, global `AuthGuard` + `ApiExceptionFilter` (`app.module.ts`).
 2. `auth/auth.guard.ts`: every non-`@Public()` request re-checks the DB — account active, password fingerprint (`fp` in JWT) unchanged, session id (`sid`) not revoked (`dbo.PhienDaThuHoi`). Web uses httpOnly cookies `khoa_at` (15 min) / `khoa_rt` (7 days, path `/api/auth`); `X-Client: mobile` gets tokens in the body + Bearer.
-   Forgot password (public): `POST /api/auth/quen-mat-khau` emails a 6-digit code (HMAC stored in `dbo.MaDatLaiMatKhau`, sql/06; 10 min, 5 tries, 60 s resend gap, same reply whether or not the email exists), `POST /api/auth/dat-lai-mat-khau` sets the new password. Mail via SMTP (`SMTP_*` in `.env`, `common/mailer.ts`); without `SMTP_HOST`/`SMTP_PASS` the code is only logged (non-production).
+   Forgot password (public): `POST /api/auth/quen-mat-khau` emails a 6-digit code (HMAC stored in `dbo.MaDatLaiMatKhau`, sql/06; 1 min, 5 tries, 60 s resend gap, same reply whether or not the email exists), `POST /api/auth/dat-lai-mat-khau` sets the new password. Mail via SMTP (`SMTP_*` in `.env`, `common/mailer.ts`); without `SMTP_HOST`/`SMTP_PASS` the code is only logged (non-production).
 3. Controllers are thin; business logic lives in `*.commands.ts` (writes) and `*.queries.ts` (reads).
 4. Commands return `Result<T>` (`common/result.ts`: `ok / invalid / invalidField / forbidden / notFound / conflict`); controllers call `unwrap()`. Field errors become `400 { message, errors: { field: "thông báo" } }`, which the web shows next to each input.
 

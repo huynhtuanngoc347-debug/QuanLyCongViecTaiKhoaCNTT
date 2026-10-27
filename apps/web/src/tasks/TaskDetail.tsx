@@ -26,7 +26,7 @@ export const FileList = ({ files }: { files: FileDto[] }) =>
       {files.map((f) => f.downloadable ? (
         <span key={f.id} className="file-card">
           <Glyph name="paperclip" size={15} />
-          <span className="file-card-name"><strong title={f.name}>{f.name}</strong><small className="muted">{extOf(f.name).slice(1).toUpperCase()} · {kb(f.size)} · {fmtDay(f.uploadedAt)}</small></span>
+          <span className="file-card-name"><strong title={f.name}>{f.name}</strong><small className="muted">{extOf(f.name).slice(1).toUpperCase()}, {kb(f.size)}, {fmtDay(f.uploadedAt)}</small></span>
           {VIEWABLE.includes(extOf(f.name)) ? <a className="file-act" href={`./api/tep/${f.id}?xem=1`} target="_blank" rel="noopener noreferrer" aria-label={`Xem trước ${f.name}`} onClick={(e) => { e.preventDefault(); void openFile(`./api/tep/${f.id}?xem=1`, true); }}><Glyph name="eye" size={15} />Xem</a> : null}
           <a className="file-act" href={`./api/tep/${f.id}`} download aria-label={`Tải về ${f.name}`} onClick={(e) => { e.preventDefault(); void openFile(`./api/tep/${f.id}`, false); }}><Glyph name="download" size={15} />Tải về</a>
         </span>
@@ -92,7 +92,7 @@ function OverviewTab({ d }: { d: TaskDetailDto }) {
       <div className="stack">
         <Block title="Thông tin thêm"><dl className="info-list">{info.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl></Block>
         <Block title="Tiến độ gần đây">
-          {recent.length ? <ul className="mini-timeline">{recent.map((p) => <li key={p.id}><b>{pct(p.percent)}%</b><div><span>{p.note}</span><small className="muted">{p.by.name} · {relative(p.at)}</small></div></li>)}</ul> : <p className="muted">Chưa có báo cáo tiến độ.</p>}
+          {recent.length ? <ul className="mini-timeline">{recent.map((p) => <li key={p.id}><b>{pct(p.percent)}%</b><div><span>{p.note}</span><small className="muted">{p.by.name}, {relative(p.at)}</small></div></li>)}</ul> : <p className="muted">Chưa có báo cáo tiến độ.</p>}
         </Block>
       </div>
     </div>
@@ -145,14 +145,14 @@ function AssignTab({ d }: { d: TaskDetailDto }) {
         const due = dueInfo(a.due, [0, 1, 2].includes(a.status) && [1, 2].includes(d.summary.status));
         return (
           <article key={a.id} className={`card assign-card ${a.status >= 5 ? 'closed' : ''}`} id={`assignment-${a.id}`}>
-            <div className="assign-who"><Avatar initials={a.initials} tone={a.personId ?? a.unitId ?? 0} /><div><strong>{a.name}</strong><small className="muted">{[a.kind === 'unit' ? 'Giao cho cả đơn vị' : '', a.role ? ROLE[a.role] : '', `giao bởi ${a.assigner.name}`].filter(Boolean).join(' · ')}</small></div></div>
+            <div className="assign-who"><Avatar initials={a.initials} tone={a.personId ?? a.unitId ?? 0} /><div><strong>{a.name}</strong><small className="muted">{[a.kind === 'unit' ? 'Giao cho cả đơn vị' : '', a.role ? ROLE[a.role] : '', `giao bởi ${a.assigner.name}`].filter(Boolean).join(', ')}</small></div></div>
             <div className="assign-state"><Badge map={A_STATUS} value={a.status} /><small className={`due ${due.cls}`}>Hạn riêng {due.text}</small>{a.approvedExtensions ? <small className="muted">Đã gia hạn {a.approvedExtensions} lần</small> : null}</div>
             {decl ? <DeclinePending a={a} decl={decl} me={me} />
-              : <div className="assign-progress"><span className="progress-cell"><Bar value={a.progress} tone={a.status === 4 ? 'green' : a.overdue ? 'orange' : ''} /><span className="muted small">{pct(a.progress)}%</span></span><small className="muted">{last ? `${last.note} · ${relative(last.at)}` : a.note ? 'Lời nhắn: ' + a.note : 'Chưa có báo cáo tiến độ.'}</small></div>}
+              : <div className="assign-progress"><span className="progress-cell"><Bar value={a.progress} tone={a.status === 4 ? 'green' : a.overdue ? 'orange' : ''} /><span className="muted small">{pct(a.progress)}%</span></span><small className="muted">{last ? `${last.note}, ${relative(last.at)}` : a.note ? 'Lời nhắn: ' + a.note : 'Chưa có báo cáo tiến độ.'}</small></div>}
             <div className="assign-actions actions wrap"><AssignmentButtons a={a} d={d} /></div>
-            {ext ? <div className="ext-box"><strong>Xin gia hạn đến {fmtDay(ext.proposedDue)}</strong> (hạn hiện tại {fmtDay(ext.oldDue)}) · {ext.requestedBy.name}, {relative(ext.createdAt)}<p>{ext.reason}</p></div> : null}
+            {ext ? <div className="ext-box"><strong>Xin gia hạn đến {fmtDay(ext.proposedDue)}</strong> (hạn hiện tại {fmtDay(ext.oldDue)}), {ext.requestedBy.name}, {relative(ext.createdAt)}<p>{ext.reason}</p></div> : null}
             {/* Người nhận tự tiếp nhận thì yêu cầu được đóng bởi chính họ: không hiện như người giao từ chối. */}
-            {!decl && lastDecl?.status === 2 && lastDecl.decidedBy && lastDecl.decidedBy.id !== lastDecl.requestedBy.id && [1, 2].includes(a.status) ? <div className="ext-box decline-box muted-box"><strong>Không đồng ý cho từ chối</strong> · {lastDecl.decidedBy.name}, {relative(lastDecl.decidedAt ?? lastDecl.createdAt)}<p>{lastDecl.comment}</p></div> : null}
+            {!decl && lastDecl?.status === 2 && lastDecl.decidedBy && lastDecl.decidedBy.id !== lastDecl.requestedBy.id && [1, 2].includes(a.status) ? <div className="ext-box decline-box muted-box"><strong>Không đồng ý cho từ chối</strong>, {lastDecl.decidedBy.name}, {relative(lastDecl.decidedAt ?? lastDecl.createdAt)}<p>{lastDecl.comment}</p></div> : null}
           </article>
         );
       })}
@@ -176,7 +176,7 @@ function DeclinePending({ a, decl, me }: { a: AssignmentDto; decl: DeclineDto; m
   return (
     <div className="decline-pending" role="status">
       <strong>{mine ? `Bạn đã xin ${beforeAccept ? 'từ chối nhận việc' : 'thôi nhận việc'}` : `${decl.requestedBy.name} xin ${beforeAccept ? 'từ chối nhận việc' : 'thôi nhận việc'}`}</strong>
-      <small>Gửi {relative(decl.createdAt)} · {waitFor}</small>
+      <small>Gửi {relative(decl.createdAt)}, {waitFor}</small>
       <p><span className="muted">Lý do:</span> {decl.reason}</p>
       {mine && !beforeAccept ? <small className="muted">Trong lúc chờ, bạn vẫn là người thực hiện việc này.</small> : null}
     </div>
@@ -194,7 +194,7 @@ function ClosedAssignment({ a }: { a: AssignmentDto }) {
   return (
     <>
       <div className="closed-head"><strong>{a.name}</strong><Badge map={A_STATUS} value={a.status} /><small className="muted">giao {fmtDay(a.assignedAt)} bởi {a.assigner.name}</small></div>
-      <p className="muted small">{label}{decl?.decidedAt ? ` · ${relative(decl.decidedAt)}` : ''}{decl ? <> · Lý do xin: {decl.reason}</> : null}</p>
+      <p className="muted small">{label}{decl?.decidedAt ? `, ${relative(decl.decidedAt)}` : ''}{decl ? <>. Lý do xin: {decl.reason}</> : null}</p>
     </>
   );
 }
@@ -206,7 +206,7 @@ function ResultTab({ d }: { d: TaskDetailDto }) {
   const counts: [string, number][] = [['Đạt', all.filter((r) => r.status === 1).length], ['Chờ duyệt', all.filter((r) => r.status === 0).length], ['Cần bổ sung', all.filter((r) => r.status === 2).length], ['Không đạt', all.filter((r) => r.status === 3).length], ['Chưa nộp', d.assignments.filter((a) => a.status < 5 && !a.results.length).length]];
   return (
     <>
-      <div className="chips static">{counts.map(([l, n]) => <span key={l} className={`chip ${l === 'Chờ duyệt' && n ? 'warn' : ''}`}>{l} · {n}</span>)}</div>
+      <div className="chips static">{counts.map(([l, n]) => <span key={l} className={`chip ${l === 'Chờ duyệt' && n ? 'warn' : ''}`}>{l} ({n})</span>)}</div>
       <div className="stack">
         {d.assignments.filter((a) => a.status < 5 || a.results.length).map((a) => (
           <article key={a.id} className="card card-pad stack">
@@ -336,13 +336,13 @@ function DiscussTab({ d }: { d: TaskDetailDto }) {
             onChange={(e) => setContent(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void submit(); }} />
           {files.length ? (
             <div className="file-list pending-files">
-              {files.map((f, i) => <span key={`${f.name}-${i}`} className="file-chip"><Glyph name="paperclip" size={13} />{f.name} · {kb(f.size)}<button type="button" aria-label={`Bỏ tệp ${f.name}`} onClick={() => setFiles(files.filter((_, j) => j !== i))}>✕</button></span>)}
+              {files.map((f, i) => <span key={`${f.name}-${i}`} className="file-chip"><Glyph name="paperclip" size={13} />{f.name}, {kb(f.size)}<button type="button" aria-label={`Bỏ tệp ${f.name}`} onClick={() => setFiles(files.filter((_, j) => j !== i))}>✕</button></span>)}
             </div>
           ) : null}
           <div className="composer-bar">
             <input ref={fileInput} type="file" multiple hidden accept={COMMENT_EXT.join(',')} onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
             <button type="button" className="button small secondary" onClick={() => fileInput.current?.click()}><Glyph name="paperclip" size={15} />Đính kèm tệp</button>
-            <span className="muted small composer-hint">Tối đa 10 tệp, mỗi tệp 20 MB · Ctrl + Enter để gửi</span>
+            <span className="muted small composer-hint">Tối đa 10 tệp, mỗi tệp 20 MB, Ctrl + Enter để gửi</span>
             <button className="button" type="submit" disabled={busy}>{busy ? 'Đang gửi…' : replyTo ? 'Gửi trả lời' : 'Gửi'}</button>
           </div>
         </form>
@@ -474,9 +474,9 @@ export function TaskDetailPage() {
         <Link className="back-link" to="/cong-viec">‹ Công việc</Link>
         <div className="detail-title">
           <div className="stack-sm">
-            <div className="tags"><Badge map={STATUS} value={t.status} /><Prio value={t.priority} /><span className="muted">· {t.categoryName || 'Chưa có thể loại'}</span></div>
+            <div className="tags"><Badge map={STATUS} value={t.status} /><Prio value={t.priority} /><span className="muted">{t.categoryName || 'Chưa có thể loại'}</span></div>
             <h1 tabIndex={-1} id="page-title">{t.title}</h1>
-            <p className="muted">{t.unitName} · tạo bởi {t.creatorName} ngày {fmtDay(t.createdAt)}</p>
+            <p className="muted">{t.unitName}, tạo bởi {t.creatorName} ngày {fmtDay(t.createdAt)}</p>
           </div>
           {mobile ? null : <div className="actions wrap">
             {p.canPublish ? <button className="button" onClick={() => void actions.changeStatus(t.id, 'publish')}>Tạo chính thức</button> : null}
@@ -495,9 +495,9 @@ export function TaskDetailPage() {
         <dl className="kv"><dt>Tiến độ tổng</dt><dd>{pct(t.progress)}%</dd><Bar value={t.progress} tone={t.status === 4 ? 'green' : t.overdue ? 'orange' : ''} /></dl>
         <dl className="kv"><dt>Hạn hoàn thành</dt><dd>{fmtDay(t.due)}</dd>
           {pendingExt ? <Link className="kv-link warn" to={hashOf('/cong-viec/chi-tiet', { id: t.id, tab: 'assign' })}>{pendingExt} yêu cầu gia hạn chờ duyệt ›</Link>
-            : <span className={`due ${due.cls} small`}>{due.cls ? due.text.split(' · ')[1] : t.status === 4 ? 'Đã hoàn thành ' + fmtDay(t.completedAt) : ''}</span>}
+            : <span className={`due ${due.cls} small`}>{due.cls ? due.text.split(', ')[1] : t.status === 4 ? 'Đã hoàn thành ' + fmtDay(t.completedAt) : ''}</span>}
         </dl>
-        <dl className="kv kv-assign"><dt>Phân công</dt><dd>{d.assignments.filter((a) => a.status < 5).length} người / đơn vị</dd><span className="muted small">{d.assignments.filter((a) => a.status === 3).length} chờ duyệt · {d.assignments.filter((a) => a.status === 4).length} hoàn thành</span></dl>
+        <dl className="kv kv-assign"><dt>Phân công</dt><dd>{d.assignments.filter((a) => a.status < 5).length} người / đơn vị</dd><span className="muted small">{d.assignments.filter((a) => a.status === 3).length} chờ duyệt, {d.assignments.filter((a) => a.status === 4).length} hoàn thành</span></dl>
         <dl className={`kv ${d.dependsOn.length ? '' : 'kv-none'}`}><dt>Phụ thuộc</dt><dd>{d.dependsOn.length ? d.dependsOn.length + ' việc trước' : 'Không có'}</dd><span className="muted small">{deps}</span></dl>
       </div>
       <nav className="tabs" aria-label="Nội dung công việc">

@@ -44,10 +44,10 @@ export function dueInfo(due: string | null | undefined, open = true): { text: st
   if (!due) return { text: 'Chưa đặt hạn', cls: '' };
   const d = toDate(due), ms = d.getTime() - Date.now();
   if (!open) return { text: fmtShort(d), cls: '' };
-  if (ms < 0) return { text: `${fmtShort(d)} · trễ ${Math.max(1, Math.ceil(-ms / DAY))} ngày`, cls: 'late' };
+  if (ms < 0) return { text: `${fmtShort(d)}, trễ ${Math.max(1, Math.ceil(-ms / DAY))} ngày`, cls: 'late' };
   if (ms <= 3 * DAY) {
     const h = ms / 3600000;
-    return { text: h < 24 ? `${fmtShort(d)} · còn ${Math.max(1, Math.round(h))} giờ` : `${fmtShort(d)} · còn ${Math.ceil(ms / DAY)} ngày`, cls: 'soon' };
+    return { text: h < 24 ? `${fmtShort(d)}, còn ${Math.max(1, Math.round(h))} giờ` : `${fmtShort(d)}, còn ${Math.ceil(ms / DAY)} ngày`, cls: 'soon' };
   }
   return { text: fmtShort(d), cls: '' };
 }

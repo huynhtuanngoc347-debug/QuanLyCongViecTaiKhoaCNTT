@@ -122,7 +122,7 @@ function AssignDialog({ d, onClose, onDone }: { d: TaskDetailDto; onClose: () =>
     get<AssignOptionsDto>(`/api/cong-viec/lua-chon-giao-viec?taskId=${t.id}`).then(setOpts).catch((e) => { toast((e as Error).message, true); onClose(); });
   }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!opts) {
-    return <Modal title="Giao việc" subtitle={`${t.title} · hạn chung ${fmtDay(t.due)}`} wide onClose={onClose}><Loading title="Đang tải danh sách người nhận…" /></Modal>;
+    return <Modal title="Giao việc" subtitle={`${t.title}, hạn chung ${fmtDay(t.due)}`} wide onClose={onClose}><Loading title="Đang tải danh sách người nhận…" /></Modal>;
   }
   const q = normalize(query);
   const people = opts.people.filter((p) => !q || normalize(`${p.name} ${p.unitName}`).includes(q));
@@ -143,7 +143,7 @@ function AssignDialog({ d, onClose, onDone }: { d: TaskDetailDto; onClose: () =>
     });
   };
   return (
-    <Modal title="Giao việc" subtitle={`${t.title} · hạn chung ${fmtDay(t.due)}`} wide onClose={onClose}>
+    <Modal title="Giao việc" subtitle={`${t.title}, hạn chung ${fmtDay(t.due)}`} wide onClose={onClose}>
       <form id="assign-form" noValidate onSubmit={submit}>
         <ErrorSummary errors={errors} />
         <Field name="kind" label="Giao cho" help="Cả đơn vị: trưởng đơn vị nhận và tự phân công lại cho thành viên."><Seg name="kind" items={[['person', 'Cá nhân'], ['unit', 'Cả đơn vị']]} value={kind} onChange={setKind} /></Field>
@@ -155,14 +155,14 @@ function AssignDialog({ d, onClose, onDone }: { d: TaskDetailDto; onClose: () =>
                 <label key={p.id} className="pick-item">
                   <input type="checkbox" name="personIds" value={p.id} checked={picked.has(p.id)} onChange={(e) => { const n = new Set(picked); if (e.target.checked) n.add(p.id); else n.delete(p.id); setPicked(n); setErrors(null); }} />
                   <Avatar initials={p.initials} tone={p.id} />
-                  <span><strong>{p.name}</strong><small className="muted">{p.unitName} · <span className={p.openTasks >= 5 ? 'warn-text' : ''}>{p.openTasks} việc đang mở{p.openTasks >= 5 ? ' · nhiều việc' : ''}</span>{declined.get(p.id) ? <span className="warn-text"> · đã từ chối việc này {declined.get(p.id)} lần</span> : null}</small></span>
+                  <span><strong>{p.name}</strong><small className="muted">{p.unitName}, <span className={p.openTasks >= 5 ? 'warn-text' : ''}>{p.openTasks} việc đang mở{p.openTasks >= 5 ? ', nhiều việc' : ''}</span>{declined.get(p.id) ? <span className="warn-text">, đã từ chối việc này {declined.get(p.id)} lần</span> : null}</small></span>
                 </label>
               )) : <p className="muted small">Không có người phù hợp.</p>}
             </div>
           </Field>
         </div>
         <div id="assign-unit" hidden={kind !== 'unit'}>
-          <Select name="unitId" label="Đơn vị nhận *" options={opts.units.map((u) => [u.id, `${u.name} · ${u.type}`])} placeholder="Chọn đơn vị" defaultValue="" error={errors?.unitId} />
+          <Select name="unitId" label="Đơn vị nhận *" options={opts.units.map((u) => [u.id, `${u.name}, ${u.type}`])} placeholder="Chọn đơn vị" defaultValue="" error={errors?.unitId} />
         </div>
         <div className="form-grid two">
           <Field name="role" label="Vai trò"><Seg name="role" items={[['', 'Không ghi'], ['1', 'Chủ trì'], ['2', 'Phối hợp']]} value="" /></Field>
@@ -189,7 +189,7 @@ function DelegateDialog({ d, a, onClose, onDone, onReject }: { d: TaskDetailDto;
     get<AssignOptionsDto>(`/api/cong-viec/lua-chon-giao-viec?assignmentId=${a.id}`).then(setOpts).catch((e) => { toast((e as Error).message, true); onClose(); });
   }, [a.id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!opts) {
-    return <Modal title="Tiếp nhận và phân công lại" subtitle={`${a.name} · hạn của đơn vị ${fmtDay(a.due)}`} wide onClose={onClose}><Loading /></Modal>;
+    return <Modal title="Tiếp nhận và phân công lại" subtitle={`${a.name}, hạn của đơn vị ${fmtDay(a.due)}`} wide onClose={onClose}><Loading /></Modal>;
   }
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -208,10 +208,10 @@ function DelegateDialog({ d, a, onClose, onDone, onReject }: { d: TaskDetailDto;
     });
   };
   return (
-    <Modal title="Tiếp nhận và phân công lại" subtitle={`Giao cho ${a.name} · hạn của đơn vị ${fmtDay(a.due)}`} wide onClose={onClose}>
+    <Modal title="Tiếp nhận và phân công lại" subtitle={`Giao cho ${a.name}, hạn của đơn vị ${fmtDay(a.due)}`} wide onClose={onClose}>
       <form id="delegate-form" noValidate onSubmit={submit}>
         <ErrorSummary errors={errors} />
-        <div className="notice"><strong>{d.summary.title}</strong><br /><span className="muted">Giao bởi {a.assigner.name} · ưu tiên {(PRIORITY[d.summary.priority]?.[0] ?? '').toLowerCase()}</span></div>
+        <div className="notice"><strong>{d.summary.title}</strong><br /><span className="muted">Giao bởi {a.assigner.name}, ưu tiên {(PRIORITY[d.summary.priority]?.[0] ?? '').toLowerCase()}</span></div>
         <div className="field">
           <label>Chọn thành viên thực hiện *</label>
           <span className="error-text" id="members-error" hidden={!errors?.members}>{errors?.members}</span>
@@ -262,7 +262,7 @@ function ProgressDialog({ d, a, onClose, onDone }: { d: TaskDetailDto; a: Assign
     });
   };
   return (
-    <Modal title="Cập nhật tiến độ" subtitle={`${d.summary.title}${last ? ` · lần trước ${pct(last.percent)}% (${fmtShort(last.at)})` : ''}`} onClose={onClose}>
+    <Modal title="Cập nhật tiến độ" subtitle={`${d.summary.title}${last ? `, lần trước ${pct(last.percent)}% (${fmtShort(last.at)})` : ''}`} onClose={onClose}>
       <form id="progress-form" noValidate onSubmit={submit}>
         <ErrorSummary errors={errors} />
         <div className="field">
@@ -308,7 +308,7 @@ function SubmitDialog({ d, a, onClose, onDone }: { d: TaskDetailDto; a: Assignme
     });
   };
   return (
-    <Modal title="Nộp kết quả" subtitle={`${d.summary.title} · lần nộp ${a.results.length + 1}`} onClose={onClose}>
+    <Modal title="Nộp kết quả" subtitle={`${d.summary.title}, lần nộp ${a.results.length + 1}`} onClose={onClose}>
       <form id="submit-form" noValidate encType="multipart/form-data" onSubmit={submit}>
         <ErrorSummary errors={errors} />
         {d.criteria ? <div className="notice"><b>Tiêu chí hoàn thành:</b> {d.criteria}</div> : null}
@@ -342,7 +342,7 @@ function EvaluateDialog({ a, resultId, onClose, onDone }: { a: AssignmentDto; re
     });
   };
   return (
-    <Modal title="Đánh giá kết quả" subtitle={`${a.name} · lần nộp ${r.attempt} · ${fmtDay(r.submittedAt)}`} onClose={onClose}>
+    <Modal title="Đánh giá kết quả" subtitle={`${a.name}, lần nộp ${r.attempt}, ${fmtDay(r.submittedAt)}`} onClose={onClose}>
       <form id="evaluate-form" noValidate onSubmit={submit}>
         <ErrorSummary errors={errors} />
         <div className="notice"><p className="prewrap">{r.content}</p>{r.files.length ? <FileList files={r.files} /> : null}</div>
@@ -373,7 +373,7 @@ function ExtensionDialog({ d, a, onClose, onDone }: { d: TaskDetailDto; a: Assig
     });
   };
   return (
-    <Modal title="Xin gia hạn" subtitle={`${d.summary.title} · giao bởi ${a.assigner.name}`} onClose={onClose}>
+    <Modal title="Xin gia hạn" subtitle={`${d.summary.title}, giao bởi ${a.assigner.name}`} onClose={onClose}>
       <form id="extension-form" noValidate onSubmit={submit}>
         <ErrorSummary errors={errors} />
         <div className="due-compare">
@@ -381,7 +381,7 @@ function ExtensionDialog({ d, a, onClose, onDone }: { d: TaskDetailDto; a: Assig
           <Input name="proposedDue" label="Hạn đề xuất *" type="date" defaultValue={addDaysIso(isoDay(a.due), 3)} min={minDay} required error={errors?.proposedDue} />
         </div>
         <Textarea name="reason" label="Lý do *" rows={3} maxLength={1000} required error={errors?.reason} />
-        <p className="muted small">Tiến độ hiện tại: {pct(a.progress)}% · đã được gia hạn {a.approvedExtensions}/2 lần.</p>
+        <p className="muted small">Tiến độ hiện tại: {pct(a.progress)}%, đã được gia hạn {a.approvedExtensions}/2 lần.</p>
         <div className="notice">Trong lúc chờ duyệt, hạn cũ vẫn được tính. Mỗi phân công được gia hạn tối đa 2 lần.</div>
         <Actions onClose={onClose} yes="Gửi yêu cầu" busy={busy} />
       </form>
@@ -407,14 +407,14 @@ function DecideDialog({ d, a, extensionId, onClose, onDone }: { d: TaskDetailDto
     });
   };
   return (
-    <Modal title="Yêu cầu gia hạn" subtitle={`${x.requestedBy.name} · gửi ${relative(x.createdAt)} · lần xin thứ ${a.extensions.length}`} onClose={onClose}>
+    <Modal title="Yêu cầu gia hạn" subtitle={`${x.requestedBy.name}, gửi ${relative(x.createdAt)}, lần xin thứ ${a.extensions.length}`} onClose={onClose}>
       <form id="decide-form" noValidate onSubmit={submit}>
         <ErrorSummary errors={errors} />
         <div className="due-compare">
           <dl className="kv"><dt>Hạn hiện tại</dt><dd>{fmtDay(x.oldDue)}</dd></dl><span aria-hidden="true">→</span>
-          <dl className="kv warn"><dt>Đề xuất</dt><dd>{fmtDay(x.proposedDue)} · +{Math.round((toDate(x.proposedDue).getTime() - toDate(x.oldDue).getTime()) / DAY)} ngày</dd></dl>
+          <dl className="kv warn"><dt>Đề xuất</dt><dd>{fmtDay(x.proposedDue)}, +{Math.round((toDate(x.proposedDue).getTime() - toDate(x.oldDue).getTime()) / DAY)} ngày</dd></dl>
         </div>
-        <div className="field"><label>Lý do</label><p className="prewrap">{x.reason}</p><small className="muted">Tiến độ {pct(a.progress)}%{a.progressHistory[0] ? ' · cập nhật ' + fmtShort(a.progressHistory[0].at) : ''}</small></div>
+        <div className="field"><label>Lý do</label><p className="prewrap">{x.reason}</p><small className="muted">Tiến độ {pct(a.progress)}%{a.progressHistory[0] ? ', cập nhật ' + fmtShort(a.progressHistory[0].at) : ''}</small></div>
         {beyond ? <div className="notice warn">Hạn đề xuất muộn hơn hạn chung của công việc ({fmtDay(d.summary.due)}). Nếu đồng ý, hạn chung sẽ lùi theo.</div> : null}
         <Field name="decision" label="Quyết định *"><Seg name="decision" items={[['approve', 'Đồng ý'], ['approve-other', 'Đồng ý với hạn khác'], ['reject', 'Từ chối']]} value={decision} onChange={setDecision} /></Field>
         <div id="other-due" hidden={decision !== 'approve-other'}>
@@ -445,10 +445,10 @@ function DeclineDecideDialog({ d, a, declineId, onClose, onDone }: { d: TaskDeta
     });
   };
   return (
-    <Modal title={waiting ? 'Yêu cầu từ chối nhận việc' : 'Yêu cầu xin từ chối việc'} subtitle={`${x.requestedBy.name} · gửi ${relative(x.createdAt)}`} onClose={onClose}>
+    <Modal title={waiting ? 'Yêu cầu từ chối nhận việc' : 'Yêu cầu xin từ chối việc'} subtitle={`${x.requestedBy.name}, gửi ${relative(x.createdAt)}`} onClose={onClose}>
       <form id="decline-decide-form" noValidate onSubmit={submit}>
         <ErrorSummary errors={errors} />
-        <div className="field"><label>Lý do</label><p className="prewrap">{x.reason}</p><small className="muted">{waiting ? `Chưa tiếp nhận · hạn riêng ${fmtDay(a.due)}` : `Đã tiếp nhận ${a.acceptedAt ? fmtShort(a.acceptedAt) : ''} · tiến độ ${pct(a.progress)}% · hạn riêng ${fmtDay(a.due)}`}</small></div>
+        <div className="field"><label>Lý do</label><p className="prewrap">{x.reason}</p><small className="muted">{waiting ? `Chưa tiếp nhận, hạn riêng ${fmtDay(a.due)}` : `Đã tiếp nhận ${a.acceptedAt ? fmtShort(a.acceptedAt) : ''}, tiến độ ${pct(a.progress)}%, hạn riêng ${fmtDay(a.due)}`}</small></div>
         <Field name="decision" label="Quyết định *"><Seg name="decision" items={[['approve', waiting ? 'Đồng ý cho từ chối' : 'Đồng ý cho thôi'], ['reject', 'Không đồng ý']]} value={decision} onChange={setDecision} /></Field>
         {decision === 'approve' ? <div className="notice">Phân công chuyển sang “Từ chối”. Tiến độ và lịch sử vẫn được giữ; bạn có thể giao việc cho người khác.</div>
           : waiting ? <div className="notice">Phân công chuyển sang “Đã tiếp nhận”; người nhận phải thực hiện và sẽ nhận được thông báo kèm lý do của bạn.</div> : null}

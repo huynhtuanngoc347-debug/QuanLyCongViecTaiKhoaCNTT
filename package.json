@@ -7,7 +7,8 @@
     "packages/shared",
     "apps/api",
     "apps/web",
-    "apps/mobile"
+    "apps/mobile",
+    "apps/android"
   ],
   "scripts": {
     "build": "npm run build -w @khoa/shared && npm run build -w @khoa/api && npm run build -w @khoa/web && npm run build -w @khoa/mobile",

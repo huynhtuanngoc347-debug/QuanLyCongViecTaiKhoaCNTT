@@ -88,13 +88,13 @@ function TaskRow({ t, mode }: { t: TaskSummaryDto; mode: Mode }) {
           <Badge map={STATUS} value={t.status} />
           {t.priority >= 3 ? <Prio value={t.priority} /> : null}
           {mode === 'manager' ? <Avatars list={t.assignees} /> : null}
-          <span className="muted task-row-unit">{mode === 'member' ? `Giao bởi ${t.creatorName}${t.myRole ? ` · ${ROLE[t.myRole]}` : ''}` : t.unitName}</span>
+          <span className="muted task-row-unit">{mode === 'member' ? `Giao bởi ${t.creatorName}${t.myRole ? `, ${ROLE[t.myRole]}` : ''}` : t.unitName}</span>
         </span>
       </div>
       <div className="task-row-progress"><Bar value={progress} tone={t.overdue ? 'red' : t.status === 4 ? 'green' : ''} /><span>{pct(progress)}%</span></div>
       <div className="task-row-due">
         {reason ? <span className={`flag flag-${reason[1]}`}>{reason[0]}</span> : null}
-        <span className={`due-chip ${due.cls}`}><Glyph name="calendar" size={13} />{due.text.split(' · ')[0]}</span>
+        <span className={`due-chip ${due.cls}`}><Glyph name="calendar" size={13} />{due.text.split(', ')[0]}</span>
       </div>
       <div className="task-row-action"><RowAction t={t} /></div>
     </div>
@@ -139,7 +139,7 @@ function Upcoming({ items }: { items: TaskSummaryDto[] }) {
             return (
               <li key={t.id} className={t.dueSoon ? 'soon' : ''}>
                 {head ? <span className="tl-date">{label(day)}</span> : null}
-                <Link to={`/cong-viec/chi-tiet?id=${t.id}`} className="tl-item"><i aria-hidden="true" /><span><strong>{t.title}</strong><small className="muted">{STATUS[t.status][0]} · {pct(t.progress)}%</small></span></Link>
+                <Link to={`/cong-viec/chi-tiet?id=${t.id}`} className="tl-item"><i aria-hidden="true" /><span><strong>{t.title}</strong><small className="muted">{STATUS[t.status][0]}, {pct(t.progress)}%</small></span></Link>
               </li>
             );
           })}
@@ -203,7 +203,7 @@ function GroupsCard({ items, base }: { items: TaskSummaryDto[]; base: string }) 
               <li key={id}>
                 <Link to={`${base}&unit=${id}`}>
                   <span className="group-name"><strong>{g.name}</strong>{i === 0 && g.open ? <span className="flag flag-blue">Nhiều việc nhất</span> : null}</span>
-                  <span className="group-nums"><b>{g.open}</b> đang mở{g.overdue ? <span className="red"> · {g.overdue} quá hạn</span> : null}<span className="muted"> · {g.done} xong</span></span>
+                  <span className="group-nums"><b>{g.open}</b> đang mở{g.overdue ? <span className="red">, {g.overdue} quá hạn</span> : null}<span className="muted">, {g.done} xong</span></span>
                   <span className="progress-cell"><Bar value={avg} tone={g.overdue ? 'orange' : ''} /><span className="small">{avg}%</span></span>
                 </Link>
               </li>
@@ -238,7 +238,7 @@ function WorkloadCard({ items, base, canAssign }: { items: TaskSummaryDto[]; bas
       {unassigned.length && canAssign ? (
         <div className="assign-callout">
           <Glyph name="assign" size={20} />
-          <span><strong>{unassigned.length} công việc chưa giao người thực hiện</strong><small className="muted">{unassigned.slice(0, 2).map((t) => t.title).join(' · ')}{unassigned.length > 2 ? '…' : ''}</small></span>
+          <span><strong>{unassigned.length} công việc chưa giao người thực hiện</strong><small className="muted">{unassigned.slice(0, 2).map((t) => t.title).join('; ')}{unassigned.length > 2 ? '…' : ''}</small></span>
           <Link className="button small" to={`/cong-viec/chi-tiet?id=${unassigned[0].id}&tab=assign`}>Giao việc</Link>
         </div>
       ) : null}
@@ -247,7 +247,7 @@ function WorkloadCard({ items, base, canAssign }: { items: TaskSummaryDto[]; bas
           {list.map((p) => (
             <li key={`${p.unit}-${p.id}`}>
               <Avatar initials={p.initials} tone={p.id} />
-              <span className="workload-name"><strong>{p.name}</strong>{p.unit || p.review ? <small className="muted">{[p.unit ? 'Đơn vị nhận việc' : '', p.review ? `${p.review} chờ duyệt` : ''].filter(Boolean).join(' · ')}</small> : null}</span>
+              <span className="workload-name"><strong>{p.name}</strong>{p.unit || p.review ? <small className="muted">{[p.unit ? 'Đơn vị nhận việc' : '', p.review ? `${p.review} chờ duyệt` : ''].filter(Boolean).join(', ')}</small> : null}</span>
               <span className="workload-bar"><span className="bar"><b style={{ width: `${(100 * p.open) / max}%` }} /></span></span>
               <span className="workload-num"><b>{p.open}</b> việc{p.overdue ? <span className="flag flag-red">{p.overdue} trễ</span> : null}</span>
             </li>
@@ -300,14 +300,14 @@ export function EvaluationCard() {
   const top = [...s.byPerson].filter((x) => x.completed).sort((a, b) => b.completed - a.completed || b.onTimePercent - a.onTimePercent).slice(0, 4);
   return (
     <section className="card dash-card eval-card">
-      <div className="dash-card-head"><h3>Hiệu quả thực hiện</h3><span className="muted small">{p.presets[p.preset as 'year']?.[2] ?? 'Kỳ hiện tại'} · {s.scopeLabel}</span></div>
+      <div className="dash-card-head"><h3>Hiệu quả thực hiện</h3><span className="muted small">{p.presets[p.preset as 'year']?.[2] ?? 'Kỳ hiện tại'}, {s.scopeLabel}</span></div>
       <div className="eval-grid">
         <div className="eval-block">
           <div className="progress-hero">
             <div className="ring green" style={{ ['--p' as string]: s.completed ? s.onTimePercent : 0 }}><span><b>{s.completed ? `${s.onTimePercent}%` : '—'}</b><small>đúng hạn</small></span></div>
             <div className="progress-hero-text">
               <strong>{s.onTimeCount} / {s.completed} việc xong đúng hạn</strong>
-              <span className="muted small">{s.total} công việc trong kỳ · {s.open} đang mở</span>
+              <span className="muted small">{s.total} công việc trong kỳ, {s.open} đang mở</span>
               {s.overdue ? <span className="flag flag-red">{s.overdue} đang quá hạn</span> : <span className="flag flag-green">Không có việc quá hạn</span>}
             </div>
           </div>

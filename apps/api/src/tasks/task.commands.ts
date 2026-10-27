@@ -1064,7 +1064,7 @@ export class TaskCommands {
         participants.push(a.MaNguoiGiao);
         if (a.MaNguoiNhan != null) participants.push(a.MaNguoiNhan);
       }
-      const preview = `${rights.userName}: ${cut(content, 300)}${files.length ? ` · ${files.length} tệp đính kèm` : ''}`;
+      const preview = `${rights.userName}: ${cut(content, 300)}${files.length ? ` (${files.length} tệp đính kèm)` : ''}`;
       if (replyTo != null && replyTo !== userId) {
         await notify(db, [replyTo], taskId, N.Comment, 0, `${rights.userName} đã trả lời bạn: ${t.TieuDe}`, preview, false, userId);
       }

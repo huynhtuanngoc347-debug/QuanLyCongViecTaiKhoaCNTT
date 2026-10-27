@@ -22,7 +22,7 @@ function header(title: string, s: UnitStatsDto, width: number, exportedAt: Date)
       [],
       [{ v: title, s: S.title }],
       [{ v: s.scopeLabel, s: S.subtitle }],
-      [{ v: `Kỳ thống kê ${day(s.from)} – ${day(s.to)} · Xuất lúc ${at}`, s: S.subtitle }],
+      [{ v: `Kỳ thống kê ${day(s.from)} – ${day(s.to)}, Xuất lúc ${at}`, s: S.subtitle }],
     ],
     merges: [`A4:${last}4`, `A5:${last}5`, `A6:${last}6`],
   };
@@ -51,7 +51,7 @@ export function statsSheets(s: UnitStatsDto, exportedAt = new Date()): Sheet[] {
   ];
   const overview: Row[] = [
     ...h1.rows,
-    [{ v: 'Tệp gồm 3 trang tính: Tổng quan · Theo đơn vị · Theo nhân sự (số liệu từng giảng viên, kể cả người chưa được giao việc).', s: S.subtitle }],
+    [{ v: 'Tệp gồm 3 trang tính: Tổng quan, Theo đơn vị, Theo nhân sự (số liệu từng giảng viên, kể cả người chưa được giao việc).', s: S.subtitle }],
     [{ v: 'Chỉ số chính', s: S.section }],
     [{ v: 'Chỉ số', s: S.head }, { v: 'Giá trị', s: S.head }],
     ...kpi.map(([label, v, st]): Row => [{ v: label, s: S.label }, { v, s: st }]),

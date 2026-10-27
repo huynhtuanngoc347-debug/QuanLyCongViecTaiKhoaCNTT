@@ -15,8 +15,8 @@ import { TaskActionsProvider } from './tasks/dialogs';
 import { TaskListPage } from './tasks/TaskList';
 import { TaskDetailPage } from './tasks/TaskDetail';
 import { TaskFormPage } from './tasks/TaskForm';
-import { PersonalStatsPage, UnitStatsPage } from './tasks/Stats';
-import { AuditPage, CategoriesPage, NotificationsPage, TemplatesPage } from './tasks/Admin';
+import { PersonalStatsPage, RiskPage, UnitStatsPage } from './tasks/Stats';
+import { AuditPage, BackupPage, CategoriesPage, NotificationsPage, TemplatesPage } from './tasks/Admin';
 import './styles-scale.css';
 import './gv.css';
 import './theme.css';
@@ -81,9 +81,11 @@ const router = createHashRouter([
       { path: 'cho-duyet', element: <TaskListPage fixedScope="review" /> },
       { path: 'thong-ke', element: <UnitStatsPage /> },
       { path: 'thong-ke-ca-nhan', element: <PersonalStatsPage /> },
+      { path: 'nguy-co-tre-han', element: <RiskPage /> },
       { path: 'the-loai', element: <CategoriesPage /> },
       { path: 'mau-cong-viec', element: <TemplatesPage /> },
       { path: 'nhat-ky', element: <AuditPage /> },
+      { path: 'sao-luu', element: <BackupPage /> },
       { path: 'thong-bao', element: <NotificationsPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],

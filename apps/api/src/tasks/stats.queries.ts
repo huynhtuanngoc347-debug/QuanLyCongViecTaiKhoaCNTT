@@ -39,7 +39,7 @@ export function tryPeriod(fromText: string | null | undefined, toText: string | 
 
 const percent = (part: number, total: number) => (total === 0 ? 0 : Math.round((100 * part) / total));
 
-function subtree(units: UnitLite[], root: number): Set<number> {
+export function subtree(units: UnitLite[], root: number): Set<number> {
   const set = new Set([root]);
   let changed = true;
   while (changed) {
@@ -352,7 +352,7 @@ export async function personalStats(db: SqlRunner, r: TaskRights, personId: numb
   }));
   const current = memberships.filter((m) => m.DangHieuLuc === 1);
   const subtitle = current.length === 0 ? 'Chưa thuộc đơn vị nào'
-    : [[...new Set(current.map((m) => m.TenChucVu))].slice(0, 2).join(', '), (primary ?? current[0]).TenDonVi].join(' · ');
+    : [[...new Set(current.map((m) => m.TenChucVu))].slice(0, 2).join(', '), (primary ?? current[0]).TenDonVi].join(' – ');
 
   return ok({
     from: localDate(from), to: localDate(to), person: { id: person.MaNguoiDung, name: person.HoTen, initials: initials(person.HoTen) }, subtitle,

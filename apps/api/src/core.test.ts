@@ -64,3 +64,17 @@ test('mã quên mật khẩu: 6 chữ số, HMAC gắn với người dùng, so 
   assert.ok(!sameHash(h, hashResetCode(7, '012346')));
   assert.ok(!sameHash('ngan', h));
 });
+
+test('điểm nguy cơ trễ hạn: chậm tiến độ + sát hạn là cao, đúng nhịp là thấp', async () => {
+  const { riskScore } = await import('./tasks/risk.queries');
+  const day = 86400000, now = new Date('2026-10-27T03:00:00Z');
+  const base = { status: 2, assignedAt: new Date(now.getTime() - 9 * day), due: new Date(now.getTime() + day), lastUpdate: now, needsWork: 0, pendingExtension: false, doneLastYear: 0, lateLastYear: 0, openLoad: 1 };
+  const late = riskScore({ ...base, progress: 10 }, now);
+  assert.equal(late.expected, 90);
+  assert.equal(late.level, 'high');
+  assert.ok(late.reasons.includes('Chậm tiến độ'));
+  const fine = riskScore({ ...base, due: new Date(now.getTime() + 20 * day), progress: 40 }, now);
+  assert.equal(fine.level, 'low');
+  assert.deepEqual(fine.reasons, []);
+  assert.ok(riskScore({ ...base, progress: 0, lastUpdate: null, status: 0, needsWork: 3, pendingExtension: true, doneLastYear: 4, lateLastYear: 4, openLoad: 9 }, now).score <= 100);
+});

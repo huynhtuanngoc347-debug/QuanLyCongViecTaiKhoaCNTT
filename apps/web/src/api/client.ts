@@ -73,7 +73,10 @@ async function parse<T>(response: Response, path: string): Promise<T> {
  * (access token 15 phút) → kiểm phiên trước. Cửa sổ xem mở ngay lúc bấm (tránh bị chặn popup) rồi mới gán địa chỉ.
  */
 export async function openFile(url: string, view: boolean): Promise<void> {
-  const win = view ? window.open('about:blank', '_blank') : null;
+  // shortcut: ứng dụng Android không mở được cửa sổ mới nên "Xem" cũng tải tệp về; muốn xem trong ứng dụng thì cần trình xem riêng.
+  const inApp = navigator.userAgent.includes('KhoaAndroid');
+  if (inApp) url = url.replace(/[?&]xem=1$/, '');
+  const win = view && !inApp ? window.open('about:blank', '_blank') : null;
   if (win) win.opener = null;
   try {
     if ((await raw('GET', '/api/auth/me')).status === 401) {

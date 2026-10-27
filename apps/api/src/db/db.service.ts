@@ -112,7 +112,8 @@ export class DbService implements OnModuleDestroy {
 
   private lib: typeof sql = sql;
 
-  private async createPool(): Promise<sql.ConnectionPool> {
+  /** requestTimeout: bỏ trống = mặc định của trình điều khiển (pool dùng chung). */
+  private async createPool(requestTimeout?: number): Promise<sql.ConnectionPool> {
     const c = appConfig.db;
     if (c.driver === 'msnodesqlv8') {
       // Đăng nhập Windows (Trusted_Connection) qua ODBC; chỉ nạp khi được chọn.
@@ -126,7 +127,7 @@ export class DbService implements OnModuleDestroy {
       let last: unknown;
       for (const connectionString of candidates) {
         try {
-          const pool = await new v8.ConnectionPool({ connectionString, pool: { max: 20, min: 0, idleTimeoutMillis: 30000 }, options: { useUTC: true } } as unknown as sql.config).connect();
+          const pool = await new v8.ConnectionPool({ connectionString, pool: { max: 20, min: 0, idleTimeoutMillis: 30000 }, options: { useUTC: true }, ...(requestTimeout ? { requestTimeout } : {}) } as unknown as sql.config).connect();
           this.logger.log(`Kết nối SQL Server bằng tài khoản Windows (${/Driver=\{([^}]*)\}/.exec(connectionString)?.[1] ?? 'ODBC'}).`);
           return pool;
         } catch (e) {
@@ -149,7 +150,7 @@ export class DbService implements OnModuleDestroy {
         useUTC: true,
         appName: 'KhoaCNTT.Api.Nest',
       },
-      requestTimeout: 30000,
+      requestTimeout: requestTimeout ?? 30000,
       connectionTimeout: 15000,
     });
     pool.on('error', (e) => this.logger.error(`Lỗi kết nối: ${(e as Error).message}`));
@@ -204,6 +205,25 @@ export class DbService implements OnModuleDestroy {
         throw error;
       }
     }
+  }
+
+  /**
+   * Lệnh quản trị chạy lâu (sao lưu, phục hồi): kết nối riêng chờ tối đa 10 phút, đóng ngay khi xong.
+   * Không dùng pool chung: hết giờ chờ giữa lúc RESTORE sẽ bỏ dở lệnh, CSDL có thể kẹt ở SINGLE_USER/RESTORING.
+   */
+  async longRunning<T>(work: (db: SqlRunner) => Promise<T>): Promise<T> {
+    const pool = await this.createPool(600_000);
+    try {
+      return await work(new SqlRunner(pool, this.lib));
+    } finally {
+      await pool.close();
+    }
+  }
+
+  /** Đóng pool hiện tại (sau phục hồi CSDL các kết nối cũ đã bị ngắt); lần gọi sau tự kết nối lại. */
+  async reset(): Promise<void> {
+    await this.onModuleDestroy();
+    this.poolPromise = null;
   }
 
   async onModuleDestroy(): Promise<void> {

@@ -15,6 +15,7 @@ import { TasksController } from './tasks/tasks.controller';
 import { TaskCommands } from './tasks/task.commands';
 import { CatalogService } from './tasks/catalog.service';
 import { ReminderScheduler } from './tasks/notifications';
+import { BackupController } from './system/backup';
 
 /** Loại đơn vị tự nhập cần sql/02_MoRong_LoaiDonVi.sql (bỏ giới hạn 5 mã của CK_DV_Loai). */
 export const CUSTOM_UNIT_TYPE_SQL = `SELECT CASE WHEN EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID(N'dbo.DonVi')
@@ -98,7 +99,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
 
 @Module({
   imports: [JwtModule.register({ global: true, secret: appConfig.jwt.secret })],
-  controllers: [HealthController, AuthController, OrganizationController, StaffController, PortalController, TasksController],
+  controllers: [HealthController, AuthController, OrganizationController, StaffController, PortalController, TasksController, BackupController],
   providers: [
     DbService, OrganizationCommands, StaffCommands, TaskCommands, CatalogService, ReminderScheduler,
     { provide: APP_GUARD, useClass: AuthGuard },

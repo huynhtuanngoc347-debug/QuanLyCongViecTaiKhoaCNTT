@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Công việc Khoa</string>
+    <string name="title_activity_main">Công việc Khoa</string>
+    <string name="package_name">vn.edu.huit.khoacntt</string>
+    <string name="custom_url_scheme">vn.edu.huit.khoacntt</string>
+</resources>

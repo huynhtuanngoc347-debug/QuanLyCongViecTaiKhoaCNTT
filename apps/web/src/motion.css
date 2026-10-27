@@ -55,7 +55,7 @@
 .button:disabled,.button[aria-disabled=true]{opacity:.6;cursor:not-allowed}
 .button:focus-visible,.link-button:focus-visible,.chip:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 /* Mũi tên trong nút/liên kết nhích theo hướng đi */
-.dash-more .glyph,.link-button .glyph,.module-go,.kpi-go,.button .glyph[class*=arrow]{transition:transform var(--dur-fast) var(--ease-out)}
+.dash-more .glyph,.link-button .glyph,.kpi-go,.button .glyph[class*=arrow]{transition:transform var(--dur-fast) var(--ease-out)}
 
 /* ---------- Ô nhập ---------- */
 .field input,.field select,.field textarea,.search-box input,.task-filters select,.search-input{transition:border-color var(--dur-fast) ease,box-shadow var(--dur-fast) ease,background-color var(--dur-fast) ease}
@@ -92,12 +92,9 @@ dialog.closing::backdrop{animation:m-fade 160ms ease reverse both}
 /* ---------- Hover (chỉ máy có chuột; màn cảm ứng không bị "dính" hiệu ứng) ---------- */
 @media (hover:hover) and (pointer:fine){
   /* Thẻ bấm được: nâng nhẹ, bóng rõ hơn, viền đậm hơn */
-  .stat-tile,a.kpi,.module,.kanban-card,a.card,.me-tile,.mp-unit,.group-list a{transition:transform var(--dur-fast) var(--ease-out),box-shadow var(--dur) var(--ease-out),border-color var(--dur-fast) ease,background-color var(--dur-fast) ease}
+  .stat-tile,a.kpi,.kanban-card,a.card,.me-tile,.mp-unit,.group-list a{transition:transform var(--dur-fast) var(--ease-out),box-shadow var(--dur) var(--ease-out),border-color var(--dur-fast) ease,background-color var(--dur-fast) ease}
   .stat-tile:hover,a.kpi:hover,.kanban-card:hover,a.card:hover{transform:translateY(-2px);box-shadow:var(--lift);border-color:var(--line-strong)}
-  .module:hover{background:#fafbff}
-  .module:hover .module-go,.dash-more:hover .glyph,.link-button:hover .glyph,a.kpi:hover .kpi-go{transform:translateX(3px);color:var(--blue)}
-  .module:hover .module-ico{transform:translateY(-1px)}
-  .module-ico,.stat-ico,.dash-head-ico{transition:transform var(--dur-fast) var(--ease-out)}
+  .stat-ico,.dash-head-ico{transition:transform var(--dur-fast) var(--ease-out)}
   .stat-tile:hover .stat-ico{transform:scale(1.06)}
   /* Nút chính: sáng hơn + bóng nhẹ */
   .button:not(.secondary):not(:disabled):hover{box-shadow:0 6px 16px -6px #2563eb80}

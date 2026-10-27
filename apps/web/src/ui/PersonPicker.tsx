@@ -50,7 +50,7 @@ export function PersonPicker({ name, label, people, value, onChange, subtitle, p
               return (
                 <button key={p.id} type="button" role="option" aria-selected={on} className={`picker-row person-row ${on ? 'on' : ''}`} onClick={() => pick(String(p.id))}>
                   <Avatar initials={p.initials} tone={p.id} />
-                  <span className="picker-name"><strong>{p.name}</strong><small>{p.email}{sub ? ` · ${sub}` : ''}</small></span>
+                  <span className="picker-name"><strong>{p.name}</strong><small>{p.email}{sub ? `, ${sub}` : ''}</small></span>
                   {on ? <Glyph name="check" size={16} className="picker-check" /> : null}
                 </button>
               );

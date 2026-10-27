@@ -9,7 +9,7 @@ import { LoginThrottle } from './login-throttle';
  * Quên mật khẩu: mã 6 chữ số gửi qua email, lưu HMAC trong dbo.MaDatLaiMatKhau (sql/06_DatLaiMatKhau.sql).
  * Mã hết hạn sau RESET_MINUTES phút, bị hủy sau RESET_MAX_TRIES lần nhập sai; mã mới thay mã cũ.
  */
-export const RESET_MINUTES = 10;
+export const RESET_MINUTES = 1;
 export const RESET_MAX_TRIES = 5;
 /** Giây tối thiểu giữa hai lần gửi mã cho cùng một tài khoản. */
 export const RESET_RESEND_SECONDS = 60;
@@ -77,7 +77,7 @@ export function resetEmail(name: string, code: string, expires: Date): { subject
       <table role="presentation" cellpadding="0" cellspacing="0" style="background:#f1f6fc;border:1px dashed #9db9dd;border-radius:14px"><tr>
         <td style="padding:16px 20px 16px 30px;font-family:Consolas,'Courier New',monospace;font-size:36px;line-height:1;font-weight:700;letter-spacing:10px;color:#0455a0">${code}</td>
       </tr></table>
-      <div style="margin-top:12px;color:#64748b;font-size:13px">Có hiệu lực <strong style="color:#0f172a">${RESET_MINUTES} phút</strong> · đến ${until} · chỉ dùng một lần</div>
+      <div style="margin-top:12px;color:#64748b;font-size:13px">Có hiệu lực <strong style="color:#0f172a">${RESET_MINUTES} phút</strong>, đến ${until}, chỉ dùng một lần</div>
     </td></tr>
     <tr><td style="padding:24px 32px 8px">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fff7ed;border-left:4px solid #f59e0b;border-radius:8px">

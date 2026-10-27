@@ -4,7 +4,7 @@ import { useUi } from '../ui/ui';
 
 /** Đặt tiêu đề tab trình duyệt. */
 export function useTitle(title: string): void {
-  useEffect(() => { document.title = `${title} · Khoa Công nghệ Thông tin`; }, [title]);
+  useEffect(() => { document.title = `${title} – Khoa Công nghệ Thông tin`; }, [title]);
 }
 
 /**

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import type { CountItemDto, MonthItemDto, PersonStatDto, PersonalStatsDto, UnitStatsDto } from '@khoa/shared';
+import type { CountItemDto, MonthItemDto, PersonStatDto, PersonalStatsDto, RiskLevel, RiskReportDto, UnitStatsDto } from '@khoa/shared';
 import { get } from '../api/client';
 import { useSession } from '../session';
 import { useAccess } from '../nav';
@@ -117,7 +117,7 @@ function PersonStats({ people }: { people: PersonStatDto[] }) {
   return (
     <section className="card table-card" aria-labelledby="person-stats-title">
       <div className="card-head person-stats-head">
-        <div><h3 id="person-stats-title">Theo nhân sự</h3><p className="muted small">Phân công cá nhân trong kỳ · bấm tên để xem chi tiết</p></div>
+        <div><h3 id="person-stats-title">Theo nhân sự</h3><p className="muted small">Phân công cá nhân trong kỳ, bấm tên để xem chi tiết</p></div>
         <div className="person-stats-tools" role="search">
           <label className="search-box"><span className="sr-only">Tìm nhân sự</span>
             <input type="search" id="person-search" placeholder="Tìm theo tên, email hoặc đơn vị…" value={search} autoComplete="off"
@@ -174,7 +174,7 @@ export function UnitStatsPage() {
   return (
     <>
       <div className="detail-title stats-head">
-        <div><h1 tabIndex={-1} id="page-title">Thống kê công việc</h1><p className="muted">{s?.scopeLabel ?? 'Trong phạm vi bạn được xem'} · {ymdText(p.from)} – {ymdText(p.to)}</p><details className="stats-note"><summary>Cách tính</summary><ul><li>Tính các công việc còn hoạt động trong kỳ: tạo trước ngày kết thúc, chưa xong trước ngày bắt đầu.</li><li>Lượt đánh giá tính theo ngày duyệt trong kỳ.</li></ul></details></div>
+        <div><h1 tabIndex={-1} id="page-title">Thống kê công việc</h1><p className="muted">{s?.scopeLabel ?? 'Trong phạm vi bạn được xem'}, kỳ {ymdText(p.from)} – {ymdText(p.to)}</p><details className="stats-note"><summary>Cách tính</summary><ul><li>Tính các công việc còn hoạt động trong kỳ: tạo trước ngày kết thúc, chưa xong trước ngày bắt đầu.</li><li>Lượt đánh giá tính theo ngày duyệt trong kỳ.</li></ul></details></div>
         <div className="actions">
           {access.caps.isMember ? <SegLinks label="Phạm vi" value="unit" items={[['unit', 'Đơn vị', '/thong-ke'], ['me', 'Của tôi', '/thong-ke-ca-nhan']]} /> : null}
           {s ? <button className="button secondary m-hide" onClick={() => downloadXlsx(`thong-ke-cong-viec-${s.from}-${s.to}.xlsx`, statsSheets(s))}>Xuất Excel</button> : null}
@@ -193,7 +193,7 @@ export function UnitStatsPage() {
             <Kpi label="Hoàn thành" value={s.completed} note={`${s.total ? Math.round((100 * s.completed) / s.total) : 0}% tổng số`} tone="green" to={listLink({ status: 4 })} />
             <Kpi label="Đúng hạn" value={`${s.onTimePercent}%`} note={`${s.onTimeCount} / ${s.completed} việc hoàn thành`} tone="blue" />
             <Kpi label="Đang quá hạn" value={s.overdue} note={s.overdue ? 'cần xử lý ngay' : 'không có'} tone={s.overdue ? 'red' : ''} to={listLink({ overdue: 1 })} />
-            <Kpi label="Đánh giá Đạt" value={s.passed} note={`${s.needsWork} cần bổ sung · ${s.failed} không đạt`} />
+            <Kpi label="Đánh giá Đạt" value={s.passed} note={`${s.needsWork} cần bổ sung, ${s.failed} không đạt`} />
           </div>
           <div className="stats-grid">
             <section className="card card-pad stack"><h3>Theo trạng thái</h3><p className="muted small">{s.total} công việc trong kỳ</p><Donut items={s.byStatus} /></section>
@@ -235,7 +235,7 @@ export function PersonalStatsPage() {
   const s = q.data, a = s?.asAssigner;
   const head = (
     <div className="detail-title stats-head">
-      <div><h1 tabIndex={-1} id="page-title">{self ? 'Thống kê của tôi' : 'Thống kê cá nhân'}</h1><p className="muted">{s ? `${s.person.name} · ${s.subtitle}` : ''}</p></div>
+      <div><h1 tabIndex={-1} id="page-title">{self ? 'Thống kê của tôi' : 'Thống kê cá nhân'}</h1><p className="muted">{s ? `${s.person.name}, ${s.subtitle}` : ''}</p></div>
       <div className="actions">
         {self && access.canViewUnitStats ? <SegLinks label="Phạm vi" value="me" items={[['unit', 'Đơn vị', '/thong-ke'], ['me', 'Của tôi', '/thong-ke-ca-nhan']]} /> : !self ? <ButtonLink to="/thong-ke" kind="secondary">‹ Thống kê đơn vị</ButtonLink> : null}
       </div>
@@ -253,7 +253,7 @@ export function PersonalStatsPage() {
           <h2 className="section-title">Với vai trò người giao việc</h2>
           <div className="kpi-grid four">
             <Kpi label="Việc đã giao" value={a.assigned} note="phân công trong kỳ" />
-            <Kpi label="Đang chờ xử lý" value={a.pendingTotal} note={`${a.pendingResults} kết quả · ${a.pendingExtensions} gia hạn · ${a.pendingAccept} tiếp nhận`} tone={a.pendingTotal ? 'orange' : ''} to={self ? '/cho-duyet' : undefined} />
+            <Kpi label="Đang chờ xử lý" value={a.pendingTotal} note={`${a.pendingResults} kết quả, ${a.pendingExtensions} gia hạn, ${a.pendingAccept} tiếp nhận`} tone={a.pendingTotal ? 'orange' : ''} to={self ? '/cho-duyet' : undefined} />
             <Kpi label="Thời gian duyệt trung bình" value={a.averageReviewDays == null ? '—' : `${String(a.averageReviewDays).replace('.', ',')} ngày`} note="từ lúc nộp đến khi đánh giá" tone="blue" />
             <Kpi label="Việc giao bị trễ" value={`${a.late} / ${a.assigned}`} note={a.assigned ? `${Math.round((100 * a.late) / a.assigned)}%` : '—'} tone={a.late ? 'red' : ''} />
           </div>
@@ -263,7 +263,7 @@ export function PersonalStatsPage() {
               <div className="table-wrap"><table><tbody>
                 {a.pending.map((x, i) => (
                   <tr key={i}>
-                    <td><Link className="task-title" to={`/cong-viec/chi-tiet?id=${x.taskId}&tab=${x.kind === 'result' ? 'result' : 'assign'}`}>{x.title}</Link><small className="muted">{kind[x.kind]} · {x.who}</small></td>
+                    <td><Link className="task-title" to={`/cong-viec/chi-tiet?id=${x.taskId}&tab=${x.kind === 'result' ? 'result' : 'assign'}`}>{x.title}</Link><small className="muted">{kind[x.kind]}, {x.who}</small></td>
                     <td className="muted small">{fmtDay(x.since)}</td>
                     <td><b className={x.waitingDays > 7 ? 'orange' : 'muted'}>{x.waitingDays ? `Chờ ${x.waitingDays} ngày` : 'Hôm nay'}</b></td>
                   </tr>
@@ -275,11 +275,11 @@ export function PersonalStatsPage() {
         </>
       ) : null}
       <div className="kpi-grid five">
-        <Kpi label="Được giao" value={s.assigned} note={`${s.lead} chủ trì · ${s.support} phối hợp`} />
+        <Kpi label="Được giao" value={s.assigned} note={`${s.lead} chủ trì, ${s.support} phối hợp`} />
         <Kpi label="Hoàn thành" value={s.completed} note={`${s.assigned ? Math.round((100 * s.completed) / s.assigned) : 0}% số được giao`} tone="green" />
-        <Kpi label="Đúng hạn" value={s.completed ? `${s.onTimePercent}%` : '—'} note={`${s.onTimeCount} / ${s.completed}${s.unitAverageOnTime != null ? ` · đơn vị trung bình ${s.unitAverageOnTime}%` : ''}`} tone="blue" />
-        <Kpi label="Đang mở" value={s.open} note={`${s.dueSoon} sắp đến hạn · ${s.waitingReview} chờ duyệt`} tone={s.dueSoon ? 'orange' : ''} to={self ? '/cong-viec?scope=assigned' : undefined} />
-        <Kpi label="Đánh giá Đạt" value={s.passed} note={`${s.needsWork} lần cần bổ sung · ${s.extensions} lần xin gia hạn`} />
+        <Kpi label="Đúng hạn" value={s.completed ? `${s.onTimePercent}%` : '—'} note={`${s.onTimeCount} / ${s.completed}${s.unitAverageOnTime != null ? `, đơn vị trung bình ${s.unitAverageOnTime}%` : ''}`} tone="blue" />
+        <Kpi label="Đang mở" value={s.open} note={`${s.dueSoon} sắp đến hạn, ${s.waitingReview} chờ duyệt`} tone={s.dueSoon ? 'orange' : ''} to={self ? '/cong-viec?scope=assigned' : undefined} />
+        <Kpi label="Đánh giá Đạt" value={s.passed} note={`${s.needsWork} lần cần bổ sung, ${s.extensions} lần xin gia hạn`} />
       </div>
       <div className="stats-grid">
         <section className="card card-pad stack"><h3>Theo tháng</h3><MonthBars months={s.byMonth} /></section>
@@ -289,7 +289,7 @@ export function PersonalStatsPage() {
       </div>
       <section className="card table-card">
         <div className="card-head spread">
-          <div><h3>Đơn vị và ban {self ? 'tôi' : ''} tham gia</h3><p className="muted small">{s.memberships.filter((m) => !m.ended).length} đơn vị đang tham gia · công việc giao qua các đơn vị này đều tính vào thống kê</p></div>
+          <div><h3>Đơn vị và ban {self ? 'tôi' : ''} tham gia</h3><p className="muted small">{s.memberships.filter((m) => !m.ended).length} đơn vị đang tham gia, công việc giao qua các đơn vị này đều tính vào thống kê</p></div>
           {self ? <Link className="link-button" to={`/ho-so?id=${session?.user.id}`}>Hồ sơ của tôi ›</Link> : null}
         </div>
         {s.memberships.length ? (
@@ -310,6 +310,76 @@ export function PersonalStatsPage() {
         ) : <Empty title="Chưa thuộc đơn vị nào" description="Liên hệ văn phòng khoa để được thêm vào đơn vị." />}
       </section>
       <p className="muted small">Chỉ {self ? 'bạn' : 'người này'} và người quản lý trực tiếp xem được trang này. Số trung bình đơn vị không hiện tên người khác.</p>
+    </>
+  );
+}
+
+// ---------------- Nguy cơ trễ hạn ----------------
+const RISK: Record<RiskLevel, [string, string]> = { high: ['Cao', 'cancel'], medium: ['Trung bình', 'review'], low: ['Thấp', 'new'] };
+
+export function RiskPage() {
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const { org } = useSession();
+  const access = useAccess();
+  const unit = params.get('unit') ?? '', level = params.get('level') ?? '';
+  const q = useQuery({
+    queryKey: ['stats', 'risk', unit],
+    queryFn: () => get<RiskReportDto>(`/api/thong-ke/nguy-co-tre-han${unit ? '?unitId=' + unit : ''}`),
+    staleTime: 30_000,
+  });
+  useTitle('Nguy cơ trễ hạn');
+  const unitName = (id: number) => org.units.find((u) => u.id === id)?.name ?? `Đơn vị ${id}`;
+  const scopeUnits = (access.isAdmin ? org.units.map((u) => u.id) : access.viewUnitIds).map((id) => [id, unitName(id)] as [number, string]).sort((a, b) => a[1].localeCompare(b[1], 'vi'));
+  const setParam = (k: string, v: string) => navigate(hashOf('/nguy-co-tre-han', { unit, level, [k]: v }), { replace: true });
+  const s = q.data;
+  const items = s ? s.items.filter((x) => !level || x.level === level) : [];
+  return (
+    <>
+      <div className="detail-title stats-head">
+        <div>
+          <h1 tabIndex={-1} id="page-title">Nguy cơ trễ hạn</h1>
+          <p className="muted">{s?.scopeLabel ?? 'Trong phạm vi bạn được xem'}</p>
+          <details className="stats-note"><summary>Cách tính</summary><ul>
+            <li>Tiến độ kỳ vọng = thời gian đã trôi qua / tổng thời gian từ ngày giao tới hạn. Báo cáo chậm hơn kỳ vọng thì tăng điểm.</li>
+            <li>Cộng thêm điểm khi: còn ít ngày, chưa tiếp nhận, 7 ngày chưa cập nhật tiến độ, bị yêu cầu bổ sung, đang xin gia hạn, 12 tháng qua hay nộp trễ (từ 3 việc đã xong trở lên), đang có từ 5 việc chưa xong.</li>
+            <li>Điểm 0–100: từ 60 là Cao, từ 35 là Trung bình. Việc đã quá hạn xem ở Thống kê đơn vị.</li>
+          </ul></details>
+        </div>
+      </div>
+      <div className="task-filters">
+        <select id="risk-unit" aria-label="Đơn vị" value={unit} onChange={(e) => setParam('unit', e.target.value)}><Options items={scopeUnits} placeholder="Mọi đơn vị trong phạm vi" /></select>
+        <select id="risk-level" aria-label="Mức nguy cơ" value={level} onChange={(e) => setParam('level', e.target.value)}>
+          <Options items={(Object.keys(RISK) as RiskLevel[]).map((k) => [k, `Nguy cơ ${RISK[k][0].toLowerCase()}`])} placeholder="Mọi mức nguy cơ" />
+        </select>
+      </div>
+      {!s ? (q.error ? <Failed error={q.error} onRetry={() => void q.refetch()} /> : <Loading title="Đang phân tích…" />) : (
+        <>
+          <div className="kpi-grid four">
+            <Kpi label="Việc đang mở" value={s.items.length} note="chưa tới hạn" />
+            <Kpi label="Nguy cơ cao" value={s.high} note={s.high ? 'nên nhắc hoặc hỗ trợ ngay' : 'không có'} tone={s.high ? 'red' : ''} />
+            <Kpi label="Nguy cơ trung bình" value={s.medium} note="cần theo dõi" />
+            <Kpi label="Nguy cơ thấp" value={s.low} note="đúng nhịp" tone="green" />
+          </div>
+          <section className="card table-card">
+            {items.length ? (
+              <div className="table-wrap"><table>
+                <thead><tr><th>Công việc</th><th>Người nhận</th><th>Hạn</th><th>Tiến độ / kỳ vọng</th><th>Nguy cơ</th><th>Lý do</th></tr></thead>
+                <tbody>{items.map((x) => (
+                  <tr key={x.assignmentId}>
+                    <td><Link className="task-title" to={`/cong-viec/chi-tiet?id=${x.taskId}&tab=assign`}>{x.title}</Link><small className="muted">{x.unitName}</small></td>
+                    <td data-label="Người nhận">{x.assignee}</td>
+                    <td data-label="Hạn" className="nowrap">{fmtDay(x.due)}<small className="muted">còn {x.daysLeft} ngày</small></td>
+                    <td data-label="Tiến độ"><Bar value={x.progress} /><small className="muted">{x.progress}% / {x.expectedProgress}%</small></td>
+                    <td data-label="Nguy cơ"><span className={`st st-${RISK[x.level][1]}`}>{RISK[x.level][0]}</span><small className="muted">{x.score} điểm</small></td>
+                    <td data-label="Lý do">{x.reasons.length ? <span className="tag-list">{x.reasons.map((r) => <span key={r} className="tag">{r}</span>)}</span> : <span className="muted small">Đúng nhịp</span>}</td>
+                  </tr>
+                ))}</tbody>
+              </table></div>
+            ) : <Empty title="Không có việc nào" description={level ? 'Không có việc ở mức nguy cơ này.' : 'Không có việc đang mở chưa tới hạn trong phạm vi.'} />}
+          </section>
+        </>
+      )}
     </>
   );
 }

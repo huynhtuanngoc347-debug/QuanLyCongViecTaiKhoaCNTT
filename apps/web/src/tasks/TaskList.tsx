@@ -51,7 +51,7 @@ function Table({ shown, total }: { shown: TaskSummaryDto[]; total: number }) {
               const open = [1, 2, 3, 5].includes(t.status), due = dueInfo(t.myDue || t.due, open && t.status !== 3);
               return (
                 <tr key={t.id} className={t.overdue ? 'is-late' : ''}>
-                  <td><Link className="task-title" to={`/cong-viec/chi-tiet?id=${t.id}`}>{t.title}</Link><small className="muted">{t.categoryName || 'Chưa có thể loại'} · {t.unitName}</small>{t.pendingReviews ? <span className="pill-alert">{t.pendingReviews} việc chờ bạn xử lý</span> : null}</td>
+                  <td><Link className="task-title" to={`/cong-viec/chi-tiet?id=${t.id}`}>{t.title}</Link><small className="muted">{t.categoryName || 'Chưa có thể loại'}, {t.unitName}</small>{t.pendingReviews ? <span className="pill-alert">{t.pendingReviews} việc chờ bạn xử lý</span> : null}</td>
                   <td><Badge map={STATUS} value={t.status} /></td>
                   <td><div className="progress-cell"><Bar value={t.progress} tone={toneFor(t)} /><span className="muted small">{pct(t.progress)}%</span></div></td>
                   <td><Prio value={t.priority} /></td>
@@ -134,7 +134,7 @@ function Kanban({ items }: { items: TaskSummaryDto[] }) {
               const due = dueInfo(t.due, [1, 2].includes(t.status));
               return (
                 <Link key={t.id} className="kanban-card card" to={`/cong-viec/chi-tiet?id=${t.id}`}>
-                  <small className="muted">{t.categoryName || 'Chưa phân loại'}{t.status === 5 ? ' · tạm dừng' : t.status === 0 ? ' · nháp' : ''}</small>
+                  <small className="muted">{t.categoryName || 'Chưa phân loại'}{t.status === 5 ? ', tạm dừng' : t.status === 0 ? ', nháp' : ''}</small>
                   <strong>{t.title}</strong>
                   <span className="progress-cell"><Bar value={t.progress} tone={toneFor(t)} /><span className="muted small">{pct(t.progress)}%</span></span>
                   <span className="kanban-foot"><span className={`due ${due.cls}`}>{due.text}</span><Avatars list={t.assignees} /></span>
@@ -209,7 +209,7 @@ function MobileCalendar({ items, f, link }: { items: TaskSummaryDto[]; f: Filter
   const iso = (d: number) => `${f.month}-${String(d).padStart(2, '0')}`;
   const dayLabel = (d: string) => {
     const w = new Date(d + 'T12:00:00Z').toLocaleDateString('vi-VN', { weekday: 'long', timeZone: 'UTC' });
-    return `${d === today ? 'Hôm nay · ' : ''}${w.charAt(0).toUpperCase() + w.slice(1)}, ${Number(d.slice(8))}/${Number(d.slice(5, 7))}`;
+    return `${d === today ? 'Hôm nay, ' : ''}${w.charAt(0).toUpperCase() + w.slice(1)}, ${Number(d.slice(8))}/${Number(d.slice(5, 7))}`;
   };
   const short = (d: string) => `${Number(isoDay(d).slice(8))}/${Number(isoDay(d).slice(5, 7))}`;
   // Danh sách bên dưới: ngày đang chọn; hoặc cả tháng (tháng này: việc quá hạn gom lên đầu, sau đó từ hôm nay trở đi).
@@ -339,8 +339,8 @@ export function TaskListPage({ fixedScope }: { fixedScope?: string }) {
   return (
     <>
       {fixedScope
-        ? <PageHeader title="Chờ tôi duyệt" description="Kết quả cần đánh giá, yêu cầu gia hạn và việc giao cho đơn vị chưa tiếp nhận." />
-        : <PageHeader title="Công việc" description={access.isAdmin && !access.caps.isMember ? 'Bạn đang xem ở chế độ chỉ đọc (quản trị hệ thống).' : 'Việc được giao cho bạn và việc bạn quản lý.'} action={access.canCreate ? (desk.mobile
+        ? <PageHeader title="Chờ tôi duyệt" />
+        : <PageHeader title="Công việc" description={access.isAdmin && !access.caps.isMember ? 'Bạn đang xem ở chế độ chỉ đọc (quản trị hệ thống).' : undefined} action={access.canCreate ? (desk.mobile
           ? <button type="button" className="button small secondary" onClick={() => desk.guard('Tạo công việc', () => navigate('/cong-viec/tao'))}>+ Tạo</button>
           : <ButtonLink to="/cong-viec/tao">+ Tạo công việc</ButtonLink>) : undefined} />}
       {desk.node}

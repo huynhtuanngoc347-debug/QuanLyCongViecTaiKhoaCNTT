@@ -25,7 +25,7 @@ export function LoginPage() {
 
   useEffect(() => {
     if (forgot) return;
-    document.title = 'Đăng nhập · Khoa Công nghệ Thông tin';
+    document.title = 'Đăng nhập – Khoa Công nghệ Thông tin';
     (saved ? pwRef.current : emailRef.current)?.focus();
   }, [saved, forgot]);
 
@@ -96,7 +96,7 @@ export function LoginPage() {
           </form>
           </>}
         </section>
-        <p className="login-cover-foot">© {new Date().getFullYear()} Khoa Công nghệ Thông tin · <a href="https://commons.wikimedia.org/wiki/File:Th%C6%B0_vi%E1%BB%87n_HUIT.jpg" target="_blank" rel="noopener noreferrer">Ảnh: “Thư viện HUIT”, Nguoisinhvien, CC BY-SA 4.0</a></p>
+        <p className="login-cover-foot">© {new Date().getFullYear()} Khoa Công nghệ Thông tin. <a href="https://commons.wikimedia.org/wiki/File:Th%C6%B0_vi%E1%BB%87n_HUIT.jpg" target="_blank" rel="noopener noreferrer">Ảnh: “Thư viện HUIT”, Nguoisinhvien, CC BY-SA 4.0</a></p>
       </main>
     </div>
   );
@@ -114,7 +114,7 @@ function ForgotPassword({ initialEmail, onDone, onCancel }: { initialEmail: stri
   const [show, setShow] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
-  useEffect(() => { document.title = 'Quên mật khẩu · Khoa Công nghệ Thông tin'; headingRef.current?.focus(); }, [step]);
+  useEffect(() => { document.title = 'Quên mật khẩu – Khoa Công nghệ Thông tin'; headingRef.current?.focus(); }, [step]);
   useEffect(() => {
     if (wait <= 0) return;
     const t = window.setTimeout(() => setWait(wait - 1), 1000);
@@ -213,7 +213,7 @@ function ForgotPassword({ initialEmail, onDone, onCancel }: { initialEmail: stri
 }
 
 export function StatusPage({ title, message, action }: { title: string; message: string; action?: React.ReactNode }) {
-  useEffect(() => { document.title = `${title} · Khoa Công nghệ Thông tin`; }, [title]);
+  useEffect(() => { document.title = `${title} – Khoa Công nghệ Thông tin`; }, [title]);
   return (
     <div className="login-shell">
       <section className="card card-pad login-card stack">

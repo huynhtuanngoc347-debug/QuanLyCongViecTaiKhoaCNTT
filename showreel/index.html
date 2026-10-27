@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>HUIT showreel</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+  html, body { margin: 0; padding: 0; background: #000; overflow: hidden; }
+  #stage { position: relative; overflow: hidden; font-family: 'Be Vietnam Pro', sans-serif; font-kerning: normal;
+           -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; }
+  #stage div, #stage span { box-sizing: border-box; }
+  .t { position: absolute; white-space: nowrap; line-height: 1; }
+  #preload { position: absolute; left: -99999px; top: 0; }
+  #hud { position: fixed; right: 8px; bottom: 8px; font: 12px monospace; color: #888; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="preload"></div>
+<script src="timeline.js"></script>
+<script src="reel.js"></script>
+</body>
+</html>

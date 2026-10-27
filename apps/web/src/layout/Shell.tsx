@@ -45,7 +45,7 @@ export function NotiItem({ n, compact = true, onOpen }: { n: NotificationDto; co
       <span className="noti-text">
         <strong>{n.title}</strong>
         {compact ? <small>{n.content}</small> : <span>{n.content}</span>}
-        <small className="muted">{relative(n.createdAt)}{n.needsAction ? <> · <b className="warn-text">cần xử lý</b></> : null}</small>
+        <small className="muted">{relative(n.createdAt)}{n.needsAction ? <>, <b className="warn-text">cần xử lý</b></> : null}</small>
       </span>
       {n.read ? null : <i className="unread-dot" aria-label="Chưa đọc" />}
     </Link>

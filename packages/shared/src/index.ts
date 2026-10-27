@@ -140,6 +140,21 @@ export interface DueAlertItemDto { taskId: number; assignmentId: number | null; 
 export interface DueAlertDto { overdue: DueAlertItemDto[]; dueSoon: DueAlertItemDto[]; }
 export interface AuditRowDto { id: number; action: string; objectType: string; objectId: string; actor: string; ip: string; at: IsoDateTime; }
 
+/** Bản sao lưu CSDL (tệp .bak trong thư mục sao lưu của SQL Server) kèm bản sao thư mục tệp đính kèm. */
+export interface BackupDto {
+  id: number; fileName: string; at: IsoDateTime; sizeBytes: number; note: string; hasFiles: boolean;
+  /** Chỉ có khi vừa sao lưu: số tệp trên kho S3 không tải về được để đưa vào bản sao lưu. */
+  skippedFiles?: number;
+}
+
+// ----- Nguy cơ trễ hạn -----
+export type RiskLevel = 'high' | 'medium' | 'low';
+export interface RiskItemDto {
+  assignmentId: number; taskId: number; title: string; assignee: string; unitName: string; due: IsoDateTime; daysLeft: number;
+  progress: number; expectedProgress: number; score: number; level: RiskLevel; reasons: string[];
+}
+export interface RiskReportDto { scopeLabel: string; high: number; medium: number; low: number; items: RiskItemDto[]; }
+
 // ----- Thống kê -----
 export interface CountItemDto { key: string; label: string; value: number; }
 export interface MonthItemDto { month: string; assigned: number; completed: number; }

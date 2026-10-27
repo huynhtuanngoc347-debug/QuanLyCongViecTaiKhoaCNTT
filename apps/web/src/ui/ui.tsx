@@ -20,12 +20,12 @@ export const ButtonLink = ({ to, children, kind = '' }: { to: string; children: 
   <Link className={`button ${kind}`} to={to}>{children}</Link>
 );
 
-export function PageHeader({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
+export function PageHeader({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
   return (
     <header className="page-header">
       <div>
         <h1 tabIndex={-1} id="page-title">{title}</h1>
-        <p>{description}</p>
+        {description ? <p>{description}</p> : null}
       </div>
       {action}
     </header>

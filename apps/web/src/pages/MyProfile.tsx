@@ -59,7 +59,7 @@ export function MyProfileMobile({ person }: { person: PersonDto }) {
           {onTime != null ? <b>{onTime}%</b> : null}
         </div>
         <h1 id="page-title" tabIndex={-1}>{[person.academicTitle, person.degree].filter(Boolean).map((x) => x.replace('Tiến sĩ', 'TS.').replace('Thạc sĩ', 'ThS.')).join(' ')} {person.name}</h1>
-        <p>{person.email}{person.employeeCode ? ` · ${person.employeeCode}` : ''}</p>
+        <p>{person.email}{person.employeeCode ? `, ${person.employeeCode}` : ''}</p>
         {roles.length ? <div className="mp-chips">{roles.slice(0, 4).map((r) => <span key={r}>{r}</span>)}</div> : null}
       </section>
 
@@ -84,7 +84,7 @@ export function MyProfileMobile({ person }: { person: PersonDto }) {
                   <i style={{ width: `${onTime ?? 0}%` }} />
                   {s.unitAverageOnTime != null ? <em style={{ left: `${s.unitAverageOnTime}%` }} /> : null}
                 </div>
-                <div className="mp-bar-note"><span>Đạt {s.passed} · Cần bổ sung {s.needsWork}{s.failed ? ` · Không đạt ${s.failed}` : ''}</span>{s.unitAverageOnTime != null ? <span>{unitWord.charAt(0).toUpperCase() + unitWord.slice(1)} {s.unitAverageOnTime}%</span> : null}</div>
+                <div className="mp-bar-note"><span>Đạt {s.passed}, Cần bổ sung {s.needsWork}{s.failed ? `, Không đạt ${s.failed}` : ''}</span>{s.unitAverageOnTime != null ? <span>{unitWord.charAt(0).toUpperCase() + unitWord.slice(1)} {s.unitAverageOnTime}%</span> : null}</div>
               </>
             )}
           </section>
@@ -96,7 +96,7 @@ export function MyProfileMobile({ person }: { person: PersonDto }) {
         {memberships.length ? memberships.map((m, i) => (
           <Link key={i} className="mp-unit" to={`/cong-viec?scope=assigned&unit=${m.unitId}`}>
             <span className="mp-unit-ico"><Glyph name="building" size={17} /></span>
-            <span className="mp-row-text"><b>{unitName(m.unitId)}</b><small>{roleName(m.roleId)}{m.primary ? ' · Đơn vị chính' : ''}</small></span>
+            <span className="mp-row-text"><b>{unitName(m.unitId)}</b><small>{roleName(m.roleId)}{m.primary ? ', Đơn vị chính' : ''}</small></span>
             <Glyph name="chevron" size={16} />
           </Link>
         )) : <p className="muted small">Chưa thuộc đơn vị nào.</p>}

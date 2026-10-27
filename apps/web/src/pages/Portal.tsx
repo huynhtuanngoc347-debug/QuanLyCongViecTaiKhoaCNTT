@@ -52,7 +52,7 @@ function MyResultsCard() {
         </div>
       </div>
       <div className="me-tiles">
-        <Link className="me-tile" to={list('')}><small>Được giao</small><b>{s.assigned}</b><span>{s.lead} chủ trì · {s.support} phối hợp</span></Link>
+        <Link className="me-tile" to={list('')}><small>Được giao</small><b>{s.assigned}</b><span>{s.lead} chủ trì, {s.support} phối hợp</span></Link>
         <Link className="me-tile" to={list('&status=4')}><small>Hoàn thành</small><b className="green">{s.completed}</b><span>{s.assigned ? Math.round((100 * s.completed) / s.assigned) : 0}% số được giao</span></Link>
         <Link className="me-tile" to={list('')}><small>Đang mở</small><b>{s.open}</b><span>{s.waitingReview ? `${s.waitingReview} chờ duyệt kết quả` : `${s.dueSoon} sắp đến hạn`}</span></Link>
         <Link className={`me-tile ${s.overdue ? 'warn' : ''}`} to={list('&overdue=1')}><small>Quá hạn</small><b className={s.overdue ? 'red' : ''}>{s.overdue}</b><span>{s.overdue ? 'cần cập nhật ngay' : 'không có'}</span></Link>
@@ -94,7 +94,7 @@ function MyUnitsCard() {
       {!q.data ? <Loading /> : list.length ? list.map((m) => (
         <Link key={`${m.unitId}-${m.role}`} className="me-unit" to={`/cong-viec?scope=assigned&unit=${m.unitId}`}>
           <span className="unit-type">{m.unitType}</span>
-          <span><strong>{m.unitName}</strong><small className="muted">{m.role} · {m.primary ? <span className="green">Đơn vị chính</span> : `từ ${ymdText(m.start)}`}</small></span>
+          <span><strong>{m.unitName}</strong><small className="muted">{m.role}, {m.primary ? <span className="green">Đơn vị chính</span> : `từ ${ymdText(m.start)}`}</small></span>
           <b>{m.openTasks} <small>việc mở</small></b>
         </Link>
       )) : <p className="muted">Chưa thuộc đơn vị nào. Liên hệ văn phòng khoa để được thêm vào đơn vị.</p>}
@@ -152,7 +152,7 @@ export function PortalPage() {
     <header className={`portal-header portal-${key}`} id="portal-header">
       <div className="portal-text">
         <h1 tabIndex={-1} id="page-title">{portal.title}</h1>
-        <p className="portal-eyebrow">{s.session.user.name} · {today.charAt(0).toUpperCase() + today.slice(1)}</p>
+        <p className="portal-eyebrow">{s.session.user.name}, {today.charAt(0).toUpperCase() + today.slice(1)}</p>
         <p className="portal-role"><span className="portal-badge">{portal.roleLabel}</span><ScopeText text={scope ?? portal.scope} /></p>
       </div>
       <div className="portal-actions">

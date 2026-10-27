@@ -368,7 +368,7 @@ app.get('/api/thong-ke/ca-nhan', (req, res) => {
   const mine = assignments.filter((a) => a.personId === pid && a.status < 5);
   const ms = memberships.filter((m) => m.personId === pid);
   res.json({
-    from: req.query.from, to: req.query.to, person: ref(pid), subtitle: 'Giảng viên · Bộ môn Khoa học dữ liệu',
+    from: req.query.from, to: req.query.to, person: ref(pid), subtitle: 'Giảng viên – Bộ môn Khoa học dữ liệu',
     assigned: mine.length, lead: mine.filter((a) => a.role === 1).length, support: mine.filter((a) => a.role === 2).length, completed: mine.filter((a) => a.status === 4).length,
     onTimePercent: 88, onTimeCount: 1, open: mine.filter((a) => a.status <= 3).length, dueSoon: mine.filter((a) => open(a) && a.due >= n && a.due - n <= 3 * DAY).length,
     waitingReview: mine.filter((a) => a.status === 3).length, passed: 7, needsWork: 1, extensions: 1, unitAverageOnTime: 82, byMonth: monthsTo(req.query.to),

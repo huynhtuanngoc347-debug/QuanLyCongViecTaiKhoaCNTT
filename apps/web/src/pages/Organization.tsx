@@ -51,7 +51,7 @@ export function OrganizationPage() {
         <div key={u.id}>
           <button className={`unit-entry ${selected ? 'selected' : ''} ${root ? 'root-unit' : ''}`} data-unit={u.id} aria-pressed={selected} onClick={() => navigate(`/to-chuc?unit=${u.id}`)}>
             <Icon name={root ? 'faculty' : selected ? 'folderActive' : 'folder'} />
-            <span><strong>{u.name}</strong>{root ? null : <small>{u.type}{count ? ` · ${count} thành viên` : ''}{u.active ? '' : ' · Ngừng hoạt động'}</small>}</span>
+            <span><strong>{u.name}</strong>{root ? null : <small>{u.type}{count ? `, ${count} thành viên` : ''}{u.active ? '' : ', Ngừng hoạt động'}</small>}</span>
           </button>
           {children.length ? <div className={depth > 0 ? 'unit-branch' : ''}>{children}</div> : null}
         </div>
@@ -64,7 +64,7 @@ export function OrganizationPage() {
   const tree = branch(null);
   return (
     <>
-      <PageHeader title="Cơ cấu tổ chức" description="Đơn vị, con người và vai trò — trong cùng một không gian." action={canCreateUnit ? <ButtonLink to={`/them-don-vi?parent=${unit.id}`}>+  Thêm đơn vị</ButtonLink> : undefined} />
+      <PageHeader title="Cơ cấu tổ chức" action={canCreateUnit ? <ButtonLink to={`/them-don-vi?parent=${unit.id}`}>+  Thêm đơn vị</ButtonLink> : undefined} />
       <div className="card org-layout">
         <aside className="explorer" aria-label="Danh sách đơn vị">
           <h2>Đơn vị trong khoa</h2>
@@ -75,7 +75,7 @@ export function OrganizationPage() {
           <header className="unit-overview">
             <div className="unit-identity">
               <div className="unit-tile"><Icon name="folderLarge" /></div>
-              <div><p className="eyebrow">{unit.type} · Mã {unit.code}</p><h2>{unit.name}</h2><p>{unit.parentId ? unitName(unit.parentId) : 'Đơn vị gốc'}</p></div>
+              <div><p className="eyebrow">{unit.type}, Mã {unit.code}</p><h2>{unit.name}</h2><p>{unit.parentId ? unitName(unit.parentId) : 'Đơn vị gốc'}</p></div>
             </div>
             <div className="metadata">
               <dl><dt>Trạng thái</dt><dd className={unit.active ? 'green' : 'muted'}>{unit.active ? 'Đang hoạt động' : 'Ngừng hoạt động'}</dd></dl>
@@ -139,7 +139,7 @@ export function StaffPage() {
   const tabs: [string, string, number, string][] = [['', 'Tất cả', matches.length, ''], ['active', 'Đang hoạt động', activeCount, 'tone-on'], ['inactive', 'Ngừng hoạt động', inactiveCount, 'tone-off']];
   return (
     <>
-      <PageHeader title="Nhân sự" description="Một hồ sơ cho mỗi người dùng; quản lý đơn vị và chức vụ theo từng lần tham gia." action={isAdmin ? <ButtonLink to="/them-nhan-su">+  Thêm nhân sự</ButtonLink> : undefined} />
+      <PageHeader title="Nhân sự" action={isAdmin ? <ButtonLink to="/them-nhan-su">+  Thêm nhân sự</ButtonLink> : undefined} />
       <section className="card staff-card">
         <div className="staff-status-tabs" role="tablist" aria-label="Lọc theo trạng thái">
           {tabs.map(([k, l, n, tone]) => (
@@ -162,7 +162,7 @@ export function StaffPage() {
                     <tr key={p.id} className={p.active ? '' : 'row-inactive'}>
                       <td><PersonLink p={p} /></td>
                       <td data-label="Đơn vị">{primaryUnit(p.id) || <span className="muted">Chưa thuộc đơn vị</span>}</td>
-                      <td data-label="Học vị">{[p.academicTitle, p.degree, p.training].filter(Boolean).join(' · ') || <span className="muted">—</span>}</td>
+                      <td data-label="Học vị">{[p.academicTitle, p.degree, p.training].filter(Boolean).join(', ') || <span className="muted">—</span>}</td>
                       <td data-label="Email"><a href={`mailto:${p.email}`}>{p.email}</a></td>
                       <td data-label="Trạng thái">{p.active
                         ? <span className="st st-done"><i />Đang hoạt động</span>
@@ -172,7 +172,7 @@ export function StaffPage() {
                 </table>
               </div>
               {page.more(list.length)}
-              <p className="muted staff-foot"><small>Hiển thị {list.length} / {org.people.length} hồ sơ · <span className="green">{activeCount} đang hoạt động</span> · <span className="red">{inactiveCount} ngừng hoạt động</span></small></p>
+              <p className="muted staff-foot"><small>Hiển thị {list.length} / {org.people.length} hồ sơ, <span className="green">{activeCount} đang hoạt động</span>, <span className="red">{inactiveCount} ngừng hoạt động</span></small></p>
             </>
           ) : <Empty title="Không tìm thấy nhân sự" description="Hãy đổi từ khóa hoặc bỏ bớt bộ lọc." action={<button className="button secondary" onClick={() => { setSearch(''); setUnit(''); setStatus(''); }}>Xóa bộ lọc</button>} />}
         </div>
@@ -210,7 +210,7 @@ export function PermissionsPage() {
   }
   return (
     <>
-      <PageHeader title="Chức vụ và quyền" description="Thiết lập quyền nghiệp vụ theo chức vụ và phạm vi đơn vị." />
+      <PageHeader title="Chức vụ và quyền" />
       <section className="card permissions-layout">
         <nav className="position-list" aria-label="Danh mục chức vụ">
           <h2>Chức vụ</h2>
@@ -280,7 +280,7 @@ export function MemberFormPage() {
   const values = { personId, unitId, roleId: draft.roleId ?? '', start: draft.start ?? today(), end: draft.end ?? '', primary: draft.primary ?? 'false' };
   return (
     <>
-      <PageHeader title="Thêm thành viên" description="Gán người dùng có sẵn vào đơn vị và xác định chức vụ đảm nhiệm." />
+      <PageHeader title="Thêm thành viên" />
       <div className="form-layout">
         <section className="card form-card">
           <form id="membership-form" noValidate onSubmit={submit} onInput={(e) => { guard.markDirty(); setDraft(formValues(e.currentTarget)); }}>
@@ -335,7 +335,7 @@ function MemberPreview({ org, values }: { org: OrganizationDto; values: Record<s
         </div>
         <div className={`flow-step ${unit ? '' : 'empty'}`}>
           <span className="flow-ico"><Glyph name="sitemap" size={18} /></span>
-          <span><small>Đơn vị</small><strong>{unit?.name ?? 'Chưa chọn'}</strong>{unit ? <small className="muted">{unit.type}{values.primary === 'true' ? ' · đơn vị chính' : ' · kiêm nhiệm'}</small> : null}</span>
+          <span><small>Đơn vị</small><strong>{unit?.name ?? 'Chưa chọn'}</strong>{unit ? <small className="muted">{unit.type}{values.primary === 'true' ? ', đơn vị chính' : ', kiêm nhiệm'}</small> : null}</span>
         </div>
         <div className={`flow-step ${role ? '' : 'empty'}`}>
           <span className="flow-ico"><Glyph name="shield" size={18} /></span>
@@ -349,7 +349,7 @@ function MemberPreview({ org, values }: { org: OrganizationDto; values: Record<s
           <h3>Đang tham gia ({current.length})</h3>
           {current.length ? (
             <ul className="member-current">
-              {current.map((m, i) => <li key={i}><span>{org.units.find((u) => u.id === m.unitId)?.name}</span><span className="muted">{org.roles.find((r) => r.id === m.roleId)?.name}{m.primary ? ' · chính' : ''}</span></li>)}
+              {current.map((m, i) => <li key={i}><span>{org.units.find((u) => u.id === m.unitId)?.name}</span><span className="muted">{org.roles.find((r) => r.id === m.roleId)?.name}{m.primary ? ', chính' : ''}</span></li>)}
             </ul>
           ) : <p className="muted small">Chưa thuộc đơn vị nào.</p>}
         </div>
@@ -411,7 +411,7 @@ export function UnitFormPage() {
   }
   return (
     <>
-      <PageHeader title="Thêm đơn vị" description="Tạo đơn vị mới trong cơ cấu tổ chức." />
+      <PageHeader title="Thêm đơn vị" />
       <div className="form-layout">
         <section className="card form-card">
           <h2>Thông tin cơ bản</h2>
@@ -540,11 +540,11 @@ export function ProfilePage() {
 
   return (
     <>
-      <PageHeader title="Hồ sơ nhân sự" description="Thông tin cá nhân và các đơn vị đang tham gia." />
+      <PageHeader title="Hồ sơ nhân sự" />
       <section className="card profile-card">
         <div className="profile-summary">
           <Avatar initials={person.initials} tone={person.id - 1} />
-          <div><h2>{person.name}</h2><p>{person.email} · {person.active ? 'Đang hoạt động' : 'Ngừng hoạt động'}</p><div className="contact-detail">{person.employeeCode}{person.phone ? ' · ' + person.phone : ''}</div></div>
+          <div><h2>{person.name}</h2><p>{person.email}, {person.active ? 'Đang hoạt động' : 'Ngừng hoạt động'}</p><div className="contact-detail">{person.employeeCode}{person.phone ? ', ' + person.phone : ''}</div></div>
         </div>
         <div className="metadata academic">
           {([['Học hàm', person.academicTitle || 'Chưa có'], ['Học vị', person.degree], ['Tình trạng đào tạo', person.training || 'Chưa cập nhật'], ['Quản trị hệ thống', person.isSystemAdmin ? 'Có' : 'Không']] as [string, string][])
@@ -640,7 +640,7 @@ export function PersonFormPage({ editing }: { editing: boolean }) {
   }
   return (
     <>
-      <PageHeader title={editing ? 'Chỉnh sửa thông tin' : 'Thêm nhân sự'} description={editing ? 'Cập nhật hồ sơ, học hàm/học vị và quyền quản trị của người dùng.' : 'Tạo hồ sơ và tài khoản đăng nhập cho giảng viên, cán bộ.'} />
+      <PageHeader title={editing ? 'Chỉnh sửa thông tin' : 'Thêm nhân sự'} />
       <div className="form-layout">
         <section className="card form-card">
           <form id="person-form" noValidate onSubmit={submit} onInput={(e) => { guard.markDirty(); setDraft(formValues(e.currentTarget)); }}>
@@ -747,7 +747,7 @@ export function PasswordPage() {
   }
   return (
     <>
-      <PageHeader title="Đổi mật khẩu" description="Đặt mật khẩu mới cho tài khoản của bạn. Các phiên đăng nhập khác sẽ bị đăng xuất." />
+      <PageHeader title="Đổi mật khẩu" description="Các phiên đăng nhập khác sẽ bị đăng xuất." />
       <section className="card form-card narrow-form">
         <h2>{session?.user.email}</h2>
         <form id="password-form" noValidate onSubmit={submit}>
